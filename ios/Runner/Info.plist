@@ -26,6 +26,12 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>HonestCattle needs camera access to scan ear tag numbers.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>HonestCattle uses background location for pasture boundaries and livestock tracking.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>HonestCattle needs your location for local weather, pasture mapping, and nearby market data.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
