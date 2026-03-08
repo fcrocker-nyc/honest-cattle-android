@@ -140,11 +140,14 @@ class PriceCard extends StatelessWidget {
                   color: isPositive ? Colors.green : AppTheme.errorRed,
                 ),
                 const SizedBox(width: 4),
-                Text(
-                  change,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isPositive ? Colors.green : AppTheme.errorRed,
+                Flexible(
+                  child: Text(
+                    change,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isPositive ? Colors.green : AppTheme.errorRed,
+                    ),
                   ),
                 ),
               ],
