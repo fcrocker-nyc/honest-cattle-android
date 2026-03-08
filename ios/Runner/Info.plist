@@ -26,8 +26,12 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>HonestCattle uses Bluetooth to connect to RFID readers and smart ear tags.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>HonestCattle needs camera access to scan ear tag numbers.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>HonestCattle uses your location for local weather, pasture mapping, and tracking livestock positions.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>HonestCattle uses background location for pasture boundaries and livestock tracking.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
