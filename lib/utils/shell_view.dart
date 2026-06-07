@@ -15,10 +15,11 @@ class ShellView extends StatelessWidget {
         currentIndex: _calculateSelectedIndex(context),
         onTap: (index) => _onItemTapped(index, context),
         type: BottomNavigationBarType.fixed,
+        backgroundColor: AppTheme.creamBackground,
         selectedItemColor: AppTheme.earthGreen,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.home),
+            icon: Icon(Icons.home_filled),
             label: 'Home',
           ),
           BottomNavigationBarItem(

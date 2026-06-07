@@ -180,14 +180,53 @@ class _HerdViewState extends ConsumerState<HerdView> {
   }
 
   Widget _buildAnimalList(List<Animal> animals) {
+    final withdrawalIds =
+        ref.watch(withdrawalAnimalIdsProvider).valueOrNull ?? {};
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: AppTheme.standardPadding),
       itemCount: animals.length,
       itemBuilder: (context, index) {
         final animal = animals[index];
-        return _AnimalRow(
-          animal: animal,
-          onTap: () => context.push('/animal/${animal.id}'),
+        return Dismissible(
+          key: Key(animal.id),
+          direction: DismissDirection.endToStart,
+          background: Container(
+            color: Colors.red,
+            alignment: Alignment.centerRight,
+            padding: const EdgeInsets.only(right: 20),
+            child: const Icon(Icons.delete, color: Colors.white),
+          ),
+          confirmDismiss: (_) async {
+            return await showDialog<bool>(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                title: const Text('Delete Animal'),
+                content: Text(
+                    'Delete ${animal.tagNumber}? This cannot be undone.'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: const Text('Cancel'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    style: TextButton.styleFrom(foregroundColor: Colors.red),
+                    child: const Text('Delete'),
+                  ),
+                ],
+              ),
+            );
+          },
+          onDismissed: (_) async {
+            final db = ref.read(databaseProvider);
+            await (db.delete(db.animals)
+                  ..where((t) => t.id.equals(animal.id)))
+                .go();
+          },
+          child: _AnimalRow(
+            animal: animal,
+            hasActiveWithdrawal: withdrawalIds.contains(animal.id),
+            onTap: () => context.push('/animal/${animal.id}'),
+          ),
         );
       },
     );
@@ -301,9 +340,14 @@ enum _SortOrder {
 
 class _AnimalRow extends StatelessWidget {
   final Animal animal;
+  final bool hasActiveWithdrawal;
   final VoidCallback onTap;
 
-  const _AnimalRow({required this.animal, required this.onTap});
+  const _AnimalRow({
+    required this.animal,
+    required this.hasActiveWithdrawal,
+    required this.onTap,
+  });
 
   IconData get _sexIcon {
     switch (animal.sex) {
@@ -352,34 +396,68 @@ class _AnimalRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        onTap: onTap,
-        leading: Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: AppTheme.earthGreen.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(color: Colors.grey.shade200),
           ),
-          child: Icon(_sexIcon, color: AppTheme.earthGreen),
         ),
-        title: Row(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppTheme.standardPadding,
+          vertical: 12,
+        ),
+        child: Row(
           children: [
-            Text(
-              animal.tagNumber,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: AppTheme.earthGreen.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(_sexIcon, color: AppTheme.earthGreen),
             ),
-            // Withdrawal indicator would go here
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        animal.tagNumber,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      if (hasActiveWithdrawal) ...[
+                        const SizedBox(width: 6),
+                        const Icon(
+                          Icons.access_time,
+                          size: 14,
+                          color: Colors.orange,
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${animal.breed.isEmpty ? 'Unknown breed' : animal.breed} • $_ageDescription',
+                    style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+            ),
+            StatusBadge(
+              text: animal.status.label,
+              color: _statusColor,
+            ),
+            const SizedBox(width: 4),
+            const Icon(Icons.chevron_right, color: Colors.grey, size: 20),
           ],
-        ),
-        subtitle: Text(
-          '${animal.breed.isEmpty ? 'Unknown breed' : animal.breed} • $_ageDescription',
-        ),
-        trailing: StatusBadge(
-          text: animal.status.label,
-          color: _statusColor,
         ),
       ),
     );

@@ -46,6 +46,49 @@ class AnimalDetailView extends ConsumerWidget {
                 const SizedBox(height: 16),
                 _buildInfoSection(animal),
                 const SizedBox(height: 16),
+                treatmentsAsync.when(
+                  data: (treatments) {
+                    final active = treatments.where((t) =>
+                        t.withdrawalDate != null &&
+                        DateTime.now().isBefore(t.withdrawalDate!));
+                    if (active.isEmpty) return const SizedBox.shrink();
+                    final soonest = active.reduce((a, b) =>
+                        a.withdrawalDate!.isBefore(b.withdrawalDate!) ? a : b);
+                    final days = soonest.withdrawalDate!
+                        .difference(DateTime.now())
+                        .inDays;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(
+                              AppTheme.cardCornerRadius),
+                          border: Border.all(
+                              color: Colors.orange.withValues(alpha: 0.4)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.access_time,
+                                color: Colors.orange, size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Withdrawal period active — ${active.length} treatment${active.length > 1 ? 's' : ''}, clears in $days day${days != 1 ? 's' : ''}',
+                                style: const TextStyle(
+                                    color: Colors.orange,
+                                    fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, __) => const SizedBox.shrink(),
+                ),
                 if (animal.sex == AnimalSex.cow)
                   calvingsAsync.when(
                     data: (calvings) => _buildCalvingSection(context, calvings),
@@ -165,9 +208,13 @@ class AnimalDetailView extends ConsumerWidget {
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
-          Wrap(
-            spacing: 24,
-            runSpacing: 12,
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            childAspectRatio: 3.0,
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
             children: [
               InfoRow(
                 label: 'Date of Birth',

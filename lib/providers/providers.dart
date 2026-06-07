@@ -175,6 +175,19 @@ final syncStatusProvider = StreamProvider<ConnectionStatus>((ref) {
   return syncService.syncStatusStream;
 });
 
+// Returns the set of animal IDs that currently have an active withdrawal period.
+// Used by the herd list to show the orange clock icon next to the tag.
+final withdrawalAnimalIdsProvider = FutureProvider<Set<String>>((ref) async {
+  final db = ref.watch(databaseProvider);
+  final now = DateTime.now();
+  final treatments = await db.select(db.treatmentRecords).get();
+  return treatments
+      .where((t) =>
+          t.withdrawalDate != null && t.withdrawalDate!.isAfter(now))
+      .map((t) => t.animalId)
+      .toSet();
+});
+
 final pendingSyncCountProvider = FutureProvider<int>((ref) async {
   final syncService = ref.watch(syncServiceProvider);
   return await syncService.getPendingChangesCount();

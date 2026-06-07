@@ -152,29 +152,26 @@ class _QuickEntryViewState extends ConsumerState<QuickEntryView> {
             ],
           ),
           const SizedBox(height: 16),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                for (final breed in [
-                  'Angus',
-                  'Hereford',
-                  'Charolais',
-                  'Red Angus',
-                  'Black Baldy'
-                ])
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      label: Text(breed),
-                      selected: _breed == breed,
-                      onSelected: (selected) {
-                        if (selected) setState(() => _breed = breed);
-                      },
-                    ),
-                  ),
-              ],
-            ),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final breed in [
+                'Angus',
+                'Hereford',
+                'Charolais',
+                'Red Angus',
+                'Black Baldy',
+                'Simmental',
+              ])
+                ChoiceChip(
+                  label: Text(breed),
+                  selected: _breed == breed,
+                  onSelected: (selected) {
+                    if (selected) setState(() => _breed = breed);
+                  },
+                ),
+            ],
           ),
         ],
       ),
@@ -218,16 +215,36 @@ class _QuickEntryViewState extends ConsumerState<QuickEntryView> {
             style: TextStyle(fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            childAspectRatio: 3.5,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
             children: CattleDrug.commonDrugs.take(8).map((drug) {
-              return ChoiceChip(
-                label: Text(drug.name),
-                selected: _selectedDrug?.id == drug.id,
-                onSelected: (selected) {
-                  setState(() => _selectedDrug = selected ? drug : null);
-                },
+              final selected = _selectedDrug?.id == drug.id;
+              return GestureDetector(
+                onTap: () =>
+                    setState(() => _selectedDrug = selected ? null : drug),
+                child: Container(
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? AppTheme.earthGreen
+                        : Colors.grey.shade200,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    drug.name,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: selected ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                ),
               );
             }).toList(),
           ),

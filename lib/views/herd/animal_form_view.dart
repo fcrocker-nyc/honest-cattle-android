@@ -93,7 +93,22 @@ class _AnimalFormViewState extends ConsumerState<AnimalFormView> {
   bool get _isEditing => widget.animalId != null;
 
   Future<void> _saveAnimal() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Missing Information'),
+          content: const Text('Please fill in all required fields.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
 
@@ -157,8 +172,18 @@ class _AnimalFormViewState extends ConsumerState<AnimalFormView> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving animal: $e')),
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('Save Failed'),
+            content: Text('Could not save animal: $e'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
         );
       }
     } finally {
@@ -171,6 +196,11 @@ class _AnimalFormViewState extends ConsumerState<AnimalFormView> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_isEditing ? 'Edit Animal' : 'Add Animal'),
+        leading: TextButton(
+          onPressed: () => context.pop(),
+          child: const Text('Cancel'),
+        ),
+        leadingWidth: 70,
         actions: [
           TextButton(
             onPressed: _isLoading ? null : _saveAnimal,
@@ -180,7 +210,10 @@ class _AnimalFormViewState extends ConsumerState<AnimalFormView> {
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Text('Save'),
+                : const Text(
+                    'Save',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
           ),
         ],
       ),

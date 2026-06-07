@@ -19,8 +19,6 @@ class _WeatherViewState extends ConsumerState<WeatherView> {
   List<DayForecast> _forecasts = [];
   bool _isLoading = true;
   String? _error;
-  bool _showWindChillCalculator = false;
-
   @override
   void initState() {
     super.initState();
@@ -88,16 +86,13 @@ class _WeatherViewState extends ConsumerState<WeatherView> {
         actions: [
           IconButton(
             icon: const Icon(Icons.ac_unit, color: AppTheme.earthGreen),
-            onPressed: () =>
-                setState(() => _showWindChillCalculator = true),
+            onPressed: _showWindChillSheet,
           ),
         ],
       ),
       body: RefreshIndicator(
         onRefresh: _loadWeather,
-        child: _showWindChillCalculator
-            ? _buildWindChillCalculator()
-            : _buildWeatherContent(locationService),
+        child: _buildWeatherContent(locationService),
       ),
     );
   }
@@ -320,9 +315,33 @@ class _WeatherViewState extends ConsumerState<WeatherView> {
     );
   }
 
+  void _showWindChillSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.4,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (_, controller) => SingleChildScrollView(
+          controller: controller,
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+          child: _WindChillCalculator(
+            initialTemp: _weatherResponse?.current?.temperature2m ?? 30,
+            initialWind: _weatherResponse?.current?.windSpeed10m ?? 15,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildWindChillCard() {
     return GestureDetector(
-      onTap: () => setState(() => _showWindChillCalculator = true),
+      onTap: _showWindChillSheet,
       child: AppCard(
         child: Row(
           children: [
@@ -347,12 +366,6 @@ class _WeatherViewState extends ConsumerState<WeatherView> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildWindChillCalculator() {
-    return _WindChillCalculator(
-      onClose: () => setState(() => _showWindChillCalculator = false),
     );
   }
 
@@ -455,17 +468,28 @@ class _ForecastRow extends StatelessWidget {
 }
 
 class _WindChillCalculator extends StatefulWidget {
-  final VoidCallback onClose;
+  final double initialTemp;
+  final double initialWind;
 
-  const _WindChillCalculator({required this.onClose});
+  const _WindChillCalculator({
+    this.initialTemp = 30,
+    this.initialWind = 15,
+  });
 
   @override
   State<_WindChillCalculator> createState() => _WindChillCalculatorState();
 }
 
 class _WindChillCalculatorState extends State<_WindChillCalculator> {
-  double _temperature = 30;
-  double _windSpeed = 15;
+  late double _temperature;
+  late double _windSpeed;
+
+  @override
+  void initState() {
+    super.initState();
+    _temperature = widget.initialTemp.clamp(-40.0, 50.0);
+    _windSpeed = widget.initialWind.clamp(0.0, 60.0);
+  }
 
   double get _windChill {
     if (_temperature > 50 || _windSpeed <= 3) return _temperature;
@@ -512,118 +536,72 @@ class _WindChillCalculatorState extends State<_WindChillCalculator> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppTheme.standardPadding),
-      child: Column(
-        children: [
-          Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Center(
+          child: Container(
+            width: 40,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ),
+        const Text(
+          'Wind Chill Calculator',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 24),
+        AppCard(
+          child: Column(
             children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: widget.onClose,
+              Text(
+                '${_windChill.round()}°F',
+                style: const TextStyle(
+                  fontSize: 64,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-              const Text(
-                'Wind Chill Calculator',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              const Text('Wind Chill'),
+              const SizedBox(height: 12),
+              StatusBadge(text: _riskLevel, color: _riskColor),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+        AppCard(
+          child: Column(
+            children: [
+              SliderInputRow(
+                label: 'Temperature',
+                value: _temperature,
+                min: -40,
+                max: 50,
+                step: 1,
+                unit: '°F',
+                format: '%.0f',
+                onChanged: (val) => setState(() => _temperature = val),
+              ),
+              const SizedBox(height: 16),
+              SliderInputRow(
+                label: 'Wind Speed',
+                value: _windSpeed,
+                min: 0,
+                max: 60,
+                step: 1,
+                unit: 'mph',
+                format: '%.0f',
+                onChanged: (val) => setState(() => _windSpeed = val),
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          AppCard(
-            child: Column(
-              children: [
-                Text(
-                  '${_windChill.round()}°F',
-                  style: const TextStyle(
-                    fontSize: 64,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const Text('Wind Chill'),
-                const SizedBox(height: 12),
-                StatusBadge(text: _riskLevel, color: _riskColor),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          AppCard(
-            child: Column(
-              children: [
-                SliderInputRow(
-                  label: 'Temperature',
-                  value: _temperature,
-                  min: -40,
-                  max: 50,
-                  step: 1,
-                  unit: '°F',
-                  format: '%.0f',
-                  onChanged: (val) => setState(() => _temperature = val),
-                ),
-                const SizedBox(height: 16),
-                SliderInputRow(
-                  label: 'Wind Speed',
-                  value: _windSpeed,
-                  min: 0,
-                  max: 60,
-                  step: 1,
-                  unit: 'mph',
-                  format: '%.0f',
-                  onChanged: (val) => setState(() => _windSpeed = val),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Cattle Cold Stress Guidelines',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 12),
-                _GuidelineRow('> 32°F', 'Normal - no action needed'),
-                _GuidelineRow('20-32°F', 'Monitor, provide windbreaks'),
-                _GuidelineRow('0-20°F', 'Increase feed 5-10%'),
-                _GuidelineRow('-20-0°F', 'Increase feed 10-25%'),
-                _GuidelineRow('< -20°F', 'Emergency shelter needed'),
-              ],
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
 
-class _GuidelineRow extends StatelessWidget {
-  final String range;
-  final String action;
-
-  const _GuidelineRow(this.range, this.action);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 80,
-            child: Text(
-              range,
-              style: const TextStyle(fontWeight: FontWeight.w500),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              action,
-              style: TextStyle(color: Colors.grey[600]),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

@@ -99,7 +99,7 @@ class _ToolsViewState extends State<ToolsView> {
             _ReferenceCard(
               title: 'Common Withdrawal Times',
               items: const [
-                'Draxxin - 28 days (meat)',
+                'Draxxin - 18 days (meat)',
                 'Excede - 13 days',
                 'LA-200 - 28 days',
                 'Dectomax - 35 days',
@@ -110,22 +110,6 @@ class _ToolsViewState extends State<ToolsView> {
               onToggle: () => setState(() {
                 _expandedCards['withdrawal'] =
                     !(_expandedCards['withdrawal'] ?? false);
-              }),
-            ),
-            const SizedBox(height: 12),
-            _ReferenceCard(
-              title: 'Gestation & Breeding',
-              items: const [
-                'Gestation Period: 283 days',
-                'Heat Cycle: 21 days',
-                'Standing Heat: 12-18 hours',
-                'Best AI Timing: 12 hours after heat',
-                'Pregnancy Check: 30-45 days post-breeding',
-              ],
-              isExpanded: _expandedCards['breeding'] ?? false,
-              onToggle: () => setState(() {
-                _expandedCards['breeding'] =
-                    !(_expandedCards['breeding'] ?? false);
               }),
             ),
           ],
