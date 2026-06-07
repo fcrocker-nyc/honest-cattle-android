@@ -96,40 +96,45 @@ class _DashboardViewState extends ConsumerState<DashboardView> {
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        title: Text(
-          ranchName.isNotEmpty ? ranchName : 'Honest Cattle',
-          style: const TextStyle(
-            fontWeight: FontWeight.w800,
-            color: AppTheme.darkBrown,
-          ),
-        ),
-        backgroundColor: Colors.grey[100],
-        elevation: 0,
-        scrolledUnderElevation: 1,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings, color: AppTheme.earthGreen),
-            onPressed: () => context.push('/settings'),
-          ),
-        ],
-      ),
       body: RefreshIndicator(
         onRefresh: _loadData,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
+        child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          children: [
-            _buildLocationPill(locationService.locationName),
-            const SizedBox(height: 16),
-            _buildWeatherSection(),
-            const SizedBox(height: 16),
-            _buildMarketSection(context),
-            const SizedBox(height: 16),
-            _buildQuickActionsSection(context),
-            const SizedBox(height: 16),
-            _buildHerdSummarySection(context, herdStats),
-            const SizedBox(height: 24),
+          slivers: [
+            SliverAppBar(
+              expandedHeight: 260,
+              pinned: true,
+              stretch: true,
+              backgroundColor: AppTheme.darkBrown,
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.settings, color: Colors.white),
+                  onPressed: () => context.push('/settings'),
+                ),
+              ],
+              flexibleSpace: FlexibleSpaceBar(
+                collapseMode: CollapseMode.parallax,
+                background: _HeroBanner(
+                  ranchName: ranchName.isNotEmpty ? ranchName : 'Honest Cattle',
+                ),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate.fixed([
+                  _buildLocationPill(locationService.locationName),
+                  const SizedBox(height: 16),
+                  _buildWeatherSection(),
+                  const SizedBox(height: 16),
+                  _buildMarketSection(context),
+                  const SizedBox(height: 16),
+                  _buildQuickActionsSection(context),
+                  const SizedBox(height: 16),
+                  _buildHerdSummarySection(context, herdStats),
+                ]),
+              ),
+            ),
           ],
         ),
       ),
@@ -521,6 +526,76 @@ class _SummaryStatCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// Hero banner matching iOS DashboardView.heroBanner():
+// grayscale image, contrast boost, dark gradient overlay, title text bottom-left
+class _HeroBanner extends StatelessWidget {
+  final String ranchName;
+
+  const _HeroBanner({required this.ranchName});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      alignment: Alignment.bottomLeft,
+      children: [
+        // Grayscale + contrast image (matches iOS .saturation(0).contrast(1.1))
+        ColorFiltered(
+          colorFilter: const ColorFilter.matrix(<double>[
+            0.2126, 0.7152, 0.0722, 0, 0,
+            0.2126, 0.7152, 0.0722, 0, 0,
+            0.2126, 0.7152, 0.0722, 0, 0,
+            0,      0,      0,      1, 0,
+          ]),
+          child: Image.asset(
+            'assets/hero_banner.jpg',
+            fit: BoxFit.cover,
+          ),
+        ),
+        // Dark gradient overlay (.clear → .black.opacity(0.55), center → bottom)
+        const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.center,
+              end: Alignment.bottomCenter,
+              colors: [Colors.transparent, Color(0x8C000000)],
+            ),
+          ),
+        ),
+        // Title text bottom-left
+        Positioned(
+          left: 20,
+          bottom: 20,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                ranchName.toUpperCase(),
+                style: const TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                  height: 1.0,
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Market Intelligence for Ranchers',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xE5FFFFFF),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
