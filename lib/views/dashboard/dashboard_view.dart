@@ -543,18 +543,13 @@ class _HeroBanner extends StatelessWidget {
       fit: StackFit.expand,
       alignment: Alignment.bottomLeft,
       children: [
-        // Grayscale + contrast image (matches iOS .saturation(0).contrast(1.1))
-        ColorFiltered(
-          colorFilter: const ColorFilter.matrix(<double>[
-            0.2126, 0.7152, 0.0722, 0, 0,
-            0.2126, 0.7152, 0.0722, 0, 0,
-            0.2126, 0.7152, 0.0722, 0, 0,
-            0,      0,      0,      1, 0,
-          ]),
-          child: Image.asset(
-            'assets/hero_banner.jpg',
-            fit: BoxFit.cover,
-          ),
+        // Grayscale image — ColorFilter.mode(grey, saturation) is the most
+        // reliable cross-platform approach on Android hardware renderers
+        Image.asset(
+          'assets/hero_banner.jpg',
+          fit: BoxFit.cover,
+          color: Colors.grey,
+          colorBlendMode: BlendMode.saturation,
         ),
         // Dark gradient overlay (.clear → .black.opacity(0.55), center → bottom)
         const DecoratedBox(
