@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/database.dart';
 import '../services/weather_service.dart';
 import '../services/market_service.dart';
@@ -7,6 +8,7 @@ import '../services/location_service.dart';
 import '../services/notification_service.dart';
 import '../services/sync_service.dart';
 import '../services/ble_service.dart';
+import '../services/hc_data_service.dart';
 
 // Database provider
 final databaseProvider = Provider<AppDatabase>((ref) {
@@ -44,6 +46,45 @@ final settingsProvider = FutureProvider<RanchSetting?>((ref) async {
   final db = ref.watch(databaseProvider);
   final settings = await db.select(db.ranchSettings).getSingleOrNull();
   return settings;
+});
+
+// HC published-data service (county moisture + calf-price forecast)
+final hcDataServiceProvider = Provider<HcDataService>((ref) => HcDataService());
+
+// Ranch county (stored in shared_preferences, matching iOS @AppStorage).
+// Bump this notifier after writing the pref to refresh dependents.
+final ranchCountyProvider =
+    NotifierProvider<RanchCountyNotifier, String>(RanchCountyNotifier.new);
+
+class RanchCountyNotifier extends Notifier<String> {
+  @override
+  String build() {
+    _load();
+    return '';
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    state = prefs.getString('ranchCounty') ?? '';
+  }
+
+  Future<void> set(String county) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('ranchCounty', county);
+    state = county;
+  }
+}
+
+// County moisture for the configured ranch county (null when none set).
+final countyMoistureProvider = FutureProvider<CountyMoisture?>((ref) async {
+  final county = ref.watch(ranchCountyProvider);
+  if (county.trim().isEmpty) return null;
+  return ref.watch(hcDataServiceProvider).fetchCountyMoisture(county);
+});
+
+// Weekly / quarterly calf-price forecast.
+final hcForecastProvider = FutureProvider<HcForecast?>((ref) async {
+  return ref.watch(hcDataServiceProvider).fetchForecast();
 });
 
 // Animals providers

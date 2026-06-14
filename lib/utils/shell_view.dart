@@ -20,7 +20,7 @@ class ShellView extends StatelessWidget {
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home_filled),
-            label: 'Home',
+            label: 'Dashboard',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.show_chart),
@@ -34,10 +34,6 @@ class ShellView extends StatelessWidget {
             icon: Icon(Icons.pets),
             label: 'Herd',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.build),
-            label: 'Tools',
-          ),
         ],
       ),
     );
@@ -48,7 +44,6 @@ class ShellView extends StatelessWidget {
     if (location.startsWith('/market')) return 1;
     if (location.startsWith('/weather')) return 2;
     if (location.startsWith('/herd')) return 3;
-    if (location.startsWith('/tools')) return 4;
     return 0;
   }
 
@@ -65,9 +60,6 @@ class ShellView extends StatelessWidget {
         break;
       case 3:
         context.go('/herd');
-        break;
-      case 4:
-        context.go('/tools');
         break;
     }
   }

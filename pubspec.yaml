@@ -1,7 +1,7 @@
 name: honest_cattle
 description: "HonestCattle - Complete cattle management app for ranchers"
 publish_to: 'none'
-version: 2.0.0+4
+version: 2.1.0+6
 
 environment:
   sdk: ^3.11.1
@@ -44,6 +44,7 @@ dependencies:
 
   # HTTP
   http: ^1.2.1
+  url_launcher: ^6.3.0
 
   # Utils
   intl: ^0.19.0
@@ -67,6 +68,10 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/appicon.png
+    - assets/hc_logo.png
+    - assets/hero_banner.jpg
 
 flutter_launcher_icons:
   android: true

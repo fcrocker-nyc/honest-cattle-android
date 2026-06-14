@@ -32,6 +32,7 @@ class SettingsView extends ConsumerStatefulWidget {
 
 class _SettingsViewState extends ConsumerState<SettingsView> {
   final _ranchNameController = TextEditingController();
+  final _countyController = TextEditingController();
   bool _notificationsEnabled = true;
   bool _priceAlertsEnabled = true;
   bool _weatherAlertsEnabled = true;
@@ -63,6 +64,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
     setState(() {
       _settings = settings;
       _ranchNameController.text = settings!.ranchName;
+      _countyController.text = ref.read(ranchCountyProvider);
       _notificationsEnabled = settings.notificationsEnabled;
       _priceAlertsEnabled = settings.priceAlertsEnabled;
       _weatherAlertsEnabled = settings.weatherAlertsEnabled;
@@ -84,6 +86,13 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
       severeWeatherAlertsEnabled: Value(_severeWeatherAlertsEnabled),
       updatedAt: Value(DateTime.now()),
     ));
+    // County drives the dashboard moisture card; stored in prefs (matches iOS
+    // @AppStorage("ranchCounty")). Strip a trailing " County" for the HC
+    // data-file naming convention.
+    final county = _countyController.text
+        .trim()
+        .replaceAll(RegExp(r'\s+[Cc]ounty$'), '');
+    await ref.read(ranchCountyProvider.notifier).set(county);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Settings saved')),
@@ -139,6 +148,7 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
   @override
   void dispose() {
     _ranchNameController.dispose();
+    _countyController.dispose();
     super.dispose();
   }
 
@@ -173,6 +183,8 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
               children: [
                 _buildSection(
                   title: 'Ranch',
+                  subtitle:
+                      'County drives the moisture, drought & streamflow card on the dashboard',
                   children: [
                     ListTile(
                       title: const Text('Ranch Name'),
@@ -184,6 +196,21 @@ class _SettingsViewState extends ConsumerState<SettingsView> {
                           decoration: const InputDecoration(
                             border: InputBorder.none,
                             hintText: 'My Ranch',
+                          ),
+                        ),
+                      ),
+                    ),
+                    ListTile(
+                      title: const Text('County'),
+                      trailing: SizedBox(
+                        width: 160,
+                        child: TextField(
+                          controller: _countyController,
+                          textAlign: TextAlign.end,
+                          textCapitalization: TextCapitalization.words,
+                          decoration: const InputDecoration(
+                            border: InputBorder.none,
+                            hintText: 'Park',
                           ),
                         ),
                       ),

@@ -7,7 +7,6 @@ import '../views/herd/animal_detail_view.dart';
 import '../views/herd/quick_entry_view.dart';
 import '../views/market/market_view.dart';
 import '../views/weather/weather_view.dart';
-import '../views/tools/tools_view.dart';
 import '../views/tools/breakeven_calculator_view.dart';
 import '../views/tools/dosage_calculator_view.dart';
 import '../views/tools/weight_estimator_view.dart';
@@ -53,12 +52,6 @@ final appRouter = GoRouter(
           path: '/herd',
           pageBuilder: (context, state) => const NoTransitionPage(
             child: HerdView(),
-          ),
-        ),
-        GoRoute(
-          path: '/tools',
-          pageBuilder: (context, state) => const NoTransitionPage(
-            child: ToolsView(),
           ),
         ),
       ],
