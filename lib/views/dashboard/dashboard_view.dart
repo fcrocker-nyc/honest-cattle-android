@@ -190,15 +190,15 @@ class _DashboardViewState extends ConsumerState<DashboardView> {
     final w = _currentWeather;
     if (w == null) return const SizedBox.shrink();
 
-    final wc = _windChill;
+    // iOS shows the air temperature when wind chill isn't applicable
+    // (warm / calm) rather than a blank — match that here.
+    final wc = _windChill ?? w.temperature2m;
     final precip = _precipProb;
-    final wcColor = wc == null
-        ? AppTheme.earthGreen
-        : wc < 0
-            ? AppTheme.errorRed
-            : wc < 20
-                ? Colors.orange
-                : AppTheme.earthGreen;
+    final wcColor = wc < 0
+        ? AppTheme.errorRed
+        : wc < 20
+            ? Colors.orange
+            : AppTheme.earthGreen;
 
     return _pillContainer(
       Row(
@@ -209,8 +209,7 @@ class _DashboardViewState extends ConsumerState<DashboardView> {
           _stat(Icons.water_drop, 'Precip 24hr',
               precip != null ? '$precip%' : '—', AppTheme.skyBlue),
           _divider(),
-          _stat(Icons.air, 'Wind Chill', wc != null ? '${wc.round()}°F' : '—',
-              wcColor),
+          _stat(Icons.air, 'Wind Chill', '${wc.round()}°F', wcColor),
         ],
       ),
     );
