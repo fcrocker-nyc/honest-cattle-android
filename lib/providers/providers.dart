@@ -87,6 +87,12 @@ final hcForecastProvider = FutureProvider<HcForecast?>((ref) async {
   return ref.watch(hcDataServiceProvider).fetchForecast();
 });
 
+// Latest Montana auction snapshot (live, from the HC pipeline).
+final latestAuctionProvider =
+    FutureProvider<MontanaAuctionSnapshot?>((ref) async {
+  return ref.watch(hcDataServiceProvider).fetchLatestAuction();
+});
+
 // Animals providers
 final animalsProvider = StreamProvider<List<Animal>>((ref) {
   final db = ref.watch(databaseProvider);

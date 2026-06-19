@@ -35,6 +35,79 @@ class HcDataService {
     }
     return HcForecast.fromJson(json.decode(res.body));
   }
+
+  // Latest Montana auction snapshot from the same pipeline that drives the
+  // honestcattle.net/montana-cattle-auction-trends/ page. Prefer the statewide
+  // weekly summary (AMS #1778); fall back to the Billings (BLS) latest sale.
+  Future<MontanaAuctionSnapshot?> fetchLatestAuction() async {
+    for (final file in const [
+      'auction/mt_weekly_latest.json',
+      'auction/bls_latest.json',
+    ]) {
+      try {
+        final res = await http
+            .get(Uri.parse('$_base$file'))
+            .timeout(const Duration(seconds: 15));
+        if (res.statusCode == 200) {
+          return MontanaAuctionSnapshot.fromJson(json.decode(res.body));
+        }
+      } catch (_) {
+        // try the next source
+      }
+    }
+    return null;
+  }
+}
+
+// MARK: - Montana auction snapshot (live, from the HC pipeline)
+
+class MontanaAuctionSnapshot {
+  final String auction; // e.g. "Billings Livestock Commission"
+  final String reportId; // e.g. "AMS_1778"
+  final String saleDate; // ISO yyyy-MM-dd
+  final int totalReceipts;
+  final int feederHead;
+  final int slaughterHead;
+  final int replacementHead;
+  final String narrative;
+
+  const MontanaAuctionSnapshot({
+    required this.auction,
+    required this.reportId,
+    required this.saleDate,
+    required this.totalReceipts,
+    required this.feederHead,
+    required this.slaughterHead,
+    required this.replacementHead,
+    required this.narrative,
+  });
+
+  int get classifiedHead => feederHead + slaughterHead + replacementHead;
+  double _pct(int head) =>
+      classifiedHead == 0 ? 0 : (head / classifiedHead) * 100;
+  double get feederPct => _pct(feederHead);
+  double get slaughterPct => _pct(slaughterHead);
+  double get replacementPct => _pct(replacementHead);
+
+  factory MontanaAuctionSnapshot.fromJson(Map<String, dynamic> j) {
+    final bd = j['breakdown'] as Map<String, dynamic>? ?? const {};
+    int head(String key) {
+      final v = bd[key];
+      if (v is Map<String, dynamic>) return (v['head'] as num?)?.toInt() ?? 0;
+      return (v as num?)?.toInt() ?? 0;
+    }
+
+    return MontanaAuctionSnapshot(
+      auction: (j['auction'] ?? '').toString(),
+      reportId: (j['report_id'] ?? '').toString(),
+      saleDate: (j['sale_date'] ?? '').toString(),
+      totalReceipts: (j['total_receipts'] as num?)?.toInt() ?? 0,
+      feederHead: head('feeder'),
+      slaughterHead: head('slaughter'),
+      replacementHead: head('replacement'),
+      narrative: (j['narrative'] ?? '').toString(),
+    );
+  }
 }
 
 // MARK: - County moisture

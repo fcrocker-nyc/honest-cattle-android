@@ -3,9 +3,11 @@ import 'dart:math';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../models/market_data.dart';
 import '../../providers/providers.dart';
+import '../../services/hc_data_service.dart';
 import '../../utils/theme.dart';
 import '../../widgets/common_widgets.dart';
 
@@ -100,6 +102,8 @@ class _MarketViewState extends ConsumerState<MarketView> {
               ErrorCard(message: _error!, onRetry: _loadData),
               const SizedBox(height: 16),
             ],
+            const _MontanaAuctionsLiveCard(),
+            const SizedBox(height: 16),
             _buildFuturesSection(),
             const SizedBox(height: 16),
             _buildChartSection(),
@@ -286,6 +290,181 @@ class _MarketViewState extends ConsumerState<MarketView> {
         ),
       ],
     );
+  }
+}
+
+class _MontanaAuctionsLiveCard extends ConsumerWidget {
+  const _MontanaAuctionsLiveCard();
+
+  static final Uri _trendsUrl =
+      Uri.parse('https://honestcattle.net/montana-cattle-auction-trends/');
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(latestAuctionProvider);
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _CardTitle(
+            icon: Icons.gavel,
+            title: 'Montana Auctions — Live',
+          ),
+          const SizedBox(height: 12),
+          async.when(
+            loading: () => const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (_, _) => Text(
+              'Live auction data is unavailable right now. Pull to refresh.',
+              style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+            ),
+            data: (snap) => snap == null
+                ? Text(
+                    'No recent Montana auction report published yet.',
+                    style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                  )
+                : _content(snap),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _content(MontanaAuctionSnapshot snap) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          snap.auction.isEmpty ? 'Montana weekly summary' : snap.auction,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: AppTheme.darkBrown,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          'Latest sale ${_formatDate(snap.saleDate)}'
+          '${snap.reportId.isEmpty ? '' : '  ·  USDA ${snap.reportId.replaceAll('_', ' ')}'}',
+          style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              _formatInt(snap.totalReceipts),
+              style: const TextStyle(
+                fontSize: 34,
+                fontWeight: FontWeight.w900,
+                color: AppTheme.earthGreen,
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Padding(
+              padding: EdgeInsets.only(bottom: 7),
+              child:
+                  Text('head', style: TextStyle(fontSize: 13, color: Colors.grey)),
+            ),
+          ],
+        ),
+        if (snap.classifiedHead > 0) ...[
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _StatusChip(
+                  label: 'Feeder ${snap.feederPct.round()}%',
+                  color: AppTheme.earthGreen),
+              _StatusChip(
+                  label: 'Slaughter ${snap.slaughterPct.round()}%',
+                  color: AppTheme.warmBrown),
+              _StatusChip(
+                  label: 'Replacement ${snap.replacementPct.round()}%',
+                  color: AppTheme.skyBlue),
+            ],
+          ),
+        ],
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: AppTheme.hcCallout,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppTheme.hcTanRule),
+          ),
+          child: const Text(
+            'Public auctions are only ~16% of Montana cattle marketing. Another '
+            '~19% sell on video/satellite auctions and ~65% by private treaty — '
+            'so auction prices reflect just part of the market.',
+            style: TextStyle(fontSize: 12, color: AppTheme.hcInk, height: 1.4),
+          ),
+        ),
+        if (snap.narrative.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Text(
+            _trim(snap.narrative, 220),
+            style: TextStyle(fontSize: 12, color: Colors.grey[700], height: 1.4),
+          ),
+        ],
+        const SizedBox(height: 12),
+        InkWell(
+          onTap: () =>
+              launchUrl(_trendsUrl, mode: LaunchMode.externalApplication),
+          child: const Row(
+            children: [
+              Text(
+                'View full auction trends',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.warmBrown,
+                ),
+              ),
+              SizedBox(width: 4),
+              Icon(Icons.arrow_forward, size: 15, color: AppTheme.warmBrown),
+            ],
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Source: USDA AMS via the Honest Cattle pipeline — same data as the website.',
+          style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+        ),
+      ],
+    );
+  }
+
+  String _formatInt(int n) {
+    final s = n.toString();
+    final b = StringBuffer();
+    for (int i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) b.write(',');
+      b.write(s[i]);
+    }
+    return b.toString();
+  }
+
+  String _formatDate(String iso) {
+    final parts = iso.split('-');
+    if (parts.length != 3) return iso;
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    final m = int.tryParse(parts[1]) ?? 0;
+    final d = int.tryParse(parts[2]) ?? 0;
+    if (m < 1 || m > 12) return iso;
+    return '${months[m - 1]} $d, ${parts[0]}';
+  }
+
+  String _trim(String s, int max) {
+    final t = s.trim();
+    if (t.length <= max) return t;
+    return '${t.substring(0, max).trimRight()}…';
   }
 }
 
