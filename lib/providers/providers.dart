@@ -98,6 +98,16 @@ final rancherShareProvider = FutureProvider<RancherShare?>((ref) async {
   return ref.watch(hcDataServiceProvider).fetchRancherShare();
 });
 
+// Freshest summer video / satellite sale (NLVA / Superior / WVM).
+final videoAuctionProvider = FutureProvider<VideoAuctionSnapshot?>((ref) async {
+  return ref.watch(hcDataServiceProvider).fetchVideoAuction();
+});
+
+// Grid cash + futures snapshot — feeds the forecast→futures variance bridge.
+final gridFuturesProvider = FutureProvider<GridFutures?>((ref) async {
+  return ref.watch(hcDataServiceProvider).fetchGridFutures();
+});
+
 // Animals providers
 final animalsProvider = StreamProvider<List<Animal>>((ref) {
   final db = ref.watch(databaseProvider);
