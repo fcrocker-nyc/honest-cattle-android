@@ -102,6 +102,8 @@ class _MarketViewState extends ConsumerState<MarketView> {
               ErrorCard(message: _error!, onRetry: _loadData),
               const SizedBox(height: 16),
             ],
+            const _RancherShareCard(),
+            const SizedBox(height: 16),
             const _MontanaAuctionsLiveCard(),
             const SizedBox(height: 16),
             _buildFuturesSection(),
@@ -478,17 +480,12 @@ enum _ChartRange {
   const _ChartRange(this.label, this.days);
 }
 
-class _RancherShareCard extends StatelessWidget {
+class _RancherShareCard extends ConsumerWidget {
   const _RancherShareCard();
 
-  static const _series = [40.8, 39.6, 38.9, 38.1, 39.4, 40.2];
-
   @override
-  Widget build(BuildContext context) {
-    const latest = 40.2;
-    const fiveYearAverage = 41.6;
-    const pti = latest - fiveYearAverage;
-
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(rancherShareProvider);
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -498,69 +495,99 @@ class _RancherShareCard extends StatelessWidget {
             title: 'Rancher Share of Retail Beef',
           ),
           const SizedBox(height: 12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '${latest.toStringAsFixed(1)}%',
-                style: const TextStyle(
-                  fontSize: 38,
-                  fontWeight: FontWeight.w900,
-                  color: AppTheme.alertOrange,
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Padding(
-                padding: EdgeInsets.only(bottom: 7),
-                child: _StatusChip(label: 'WATCH', color: AppTheme.alertOrange),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '${pti.toStringAsFixed(1)} pp vs ${fiveYearAverage.toStringAsFixed(1)}% five-year average. "pp" = percentage points.',
-            style: TextStyle(fontSize: 12, color: Colors.grey[700]),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 56,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                for (final share in _series)
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 3),
-                      child: FractionallySizedBox(
-                        heightFactor: (share - 36) / 8,
-                        alignment: Alignment.bottomCenter,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: _shareColor(share),
-                            borderRadius: BorderRadius.circular(3),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
+          async.when(
+            loading: () => const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Center(child: CircularProgressIndicator()),
             ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'Source: USDA ERS Meat Price Spreads. This card mirrors the iOS Market tab and website pill.',
-            style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+            error: (_, _) => Text(
+              'USDA ERS share is unavailable right now. Pull to refresh.',
+              style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+            ),
+            data: (rs) => rs == null
+                ? Text(
+                    'USDA ERS share is unavailable right now. Pull to refresh.',
+                    style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                  )
+                : _content(rs),
           ),
         ],
       ),
     );
   }
 
-  static Color _shareColor(double share) {
-    if (share < 38) return AppTheme.errorRed;
-    if (share < 40) return AppTheme.errorRed.withValues(alpha: 0.85);
-    if (share < 41) return AppTheme.alertOrange;
-    return Colors.green;
+  Widget _content(RancherShare rs) {
+    final color = rs.isGreen
+        ? AppTheme.earthGreen
+        : (rs.isYellow ? AppTheme.warmBrown : AppTheme.errorRed);
+    final pti = rs.ptiValue;
+    final up = pti >= 0;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              '${rs.pct.toStringAsFixed(1)}%',
+              style: TextStyle(
+                fontSize: 38,
+                fontWeight: FontWeight.w900,
+                color: color,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 7),
+              child: _StatusChip(label: rs.badge, color: color),
+            ),
+            if (rs.prevPct != null) ...[
+              const SizedBox(width: 8),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 9),
+                child: Text(
+                  _delta(rs.pct, rs.prevPct!),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: (rs.pct - rs.prevPct!) >= 0
+                        ? AppTheme.earthGreen
+                        : AppTheme.errorRed,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (rs.farm != null && rs.retail != null)
+          Text(
+            'Farm value ${rs.farm!.round()}¢/lb · Retail value ${rs.retail!.round()}¢/lb. '
+            'Farm-level prices are ${rs.pct >= RancherShare.floorPct ? 'at or above' : 'below'} the 39% floor.',
+            style: TextStyle(fontSize: 13, color: Colors.grey[800], height: 1.4),
+          ),
+        const SizedBox(height: 8),
+        Text(
+          'PTI ${up ? '+' : ''}${pti.toStringAsFixed(1)} pp vs ${RancherShare.fiveYearAvg}% five-year average — '
+          '${up ? 'bullish for Montana calf bids on a 4–8 week lag.' : 'retail margin compression; watch for calf-bid softness.'}',
+          style: TextStyle(fontSize: 12, color: Colors.grey[700], height: 1.4),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Source: USDA ERS Meat Price Spreads, ${rs.asOf}. '
+          'Thresholds: Red <39% · Yellow 39–41% · Green >41%.',
+          style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+        ),
+      ],
+    );
+  }
+
+  String _delta(double pct, double prev) {
+    final d = pct - prev;
+    if (d.abs() < 0.2) return '↔ flat';
+    return d > 0
+        ? '↑ +${d.toStringAsFixed(1)}pp'
+        : '↓ ${d.toStringAsFixed(1)}pp';
   }
 }
 

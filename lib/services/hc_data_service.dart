@@ -57,6 +57,22 @@ class HcDataService {
     }
     return null;
   }
+
+  // Live "Rancher Share of Retail Beef" — the same USDA ERS feed the website
+  // pill uses (project-efarb.vercel.app). Returns null on any failure.
+  Future<RancherShare?> fetchRancherShare() async {
+    try {
+      final res = await http
+          .get(Uri.parse('https://project-efarb.vercel.app/api/rancher-share'))
+          .timeout(const Duration(seconds: 15));
+      if (res.statusCode == 200) {
+        return RancherShare.fromJson(json.decode(res.body));
+      }
+    } catch (_) {
+      // leave null; the card shows an unavailable state
+    }
+    return null;
+  }
 }
 
 // MARK: - Montana auction snapshot (live, from the HC pipeline)
@@ -106,6 +122,51 @@ class MontanaAuctionSnapshot {
       slaughterHead: head('slaughter'),
       replacementHead: head('replacement'),
       narrative: (j['narrative'] ?? '').toString(),
+    );
+  }
+}
+
+// MARK: - Rancher share of retail beef (live, USDA ERS via project-efarb)
+
+class RancherShare {
+  final double pct; // farmer's share of the retail dollar, %
+  final double? prevPct; // prior month
+  final double? pti; // price-transmission index vs 5-yr avg (pp)
+  final double? farm; // farm value, cents/lb
+  final double? retail; // retail value, cents/lb
+  final String month; // e.g. "May 2026"
+  final String asOf;
+
+  // Thresholds match the website pill: Red <39 · Yellow 39–41 · Green >41.
+  static const double fiveYearAvg = 39.5;
+  static const double floorPct = 39.0;
+
+  const RancherShare({
+    required this.pct,
+    this.prevPct,
+    this.pti,
+    this.farm,
+    this.retail,
+    required this.month,
+    required this.asOf,
+  });
+
+  bool get isGreen => pct >= 41;
+  bool get isYellow => pct >= 39 && pct < 41;
+  bool get isRed => pct < 39;
+  String get badge => isGreen ? 'GREEN' : (isYellow ? 'YELLOW' : 'RED');
+  double get ptiValue => pti ?? (pct - fiveYearAvg);
+
+  factory RancherShare.fromJson(Map<String, dynamic> j) {
+    double? d(String k) => (j[k] as num?)?.toDouble();
+    return RancherShare(
+      pct: d('pct') ?? 0,
+      prevPct: d('prev_pct'),
+      pti: d('pti'),
+      farm: d('farm'),
+      retail: d('retail'),
+      month: (j['month'] ?? '').toString(),
+      asOf: (j['as_of'] ?? j['month'] ?? '').toString(),
     );
   }
 }

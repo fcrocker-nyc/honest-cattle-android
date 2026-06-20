@@ -93,6 +93,11 @@ final latestAuctionProvider =
   return ref.watch(hcDataServiceProvider).fetchLatestAuction();
 });
 
+// Live rancher share of retail beef (USDA ERS feed; matches the website pill).
+final rancherShareProvider = FutureProvider<RancherShare?>((ref) async {
+  return ref.watch(hcDataServiceProvider).fetchRancherShare();
+});
+
 // Animals providers
 final animalsProvider = StreamProvider<List<Animal>>((ref) {
   final db = ref.watch(databaseProvider);
