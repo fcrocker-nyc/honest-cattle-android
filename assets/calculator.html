@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Calf Check</title>
+<style>
+  html,body{margin:0;background:#f7f2e7;color:#2c2a22;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-text-size-adjust:100%;}
+  #hc-fallback{display:none;padding:40px 24px;text-align:center;color:#7c7560;line-height:1.5}
+</style>
+</head>
+<body>
+  <div id="hc-calc-root"></div>
+  <div id="hc-fallback">Couldn’t load the calculator.<br>Check your connection and reopen this screen.</div>
+  <!-- self-updating bundle (engine + live MT data + UI) -->
+  <script src="https://cdn.jsdelivr.net/gh/fcrocker-nyc/dirk-adams-honest-cattle-data@main/calculator/hc-calc.bundle.js"></script>
+  <script>
+    setTimeout(function(){
+      if(!window.HCMarket){ document.getElementById('hc-fallback').style.display='block'; }
+    }, 6000);
+  </script>
+</body>
+</html>

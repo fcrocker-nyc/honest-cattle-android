@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Calf Check calculator WebView loads its bundle from jsDelivr -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="Honest Cattle"
         android:name="${applicationName}"

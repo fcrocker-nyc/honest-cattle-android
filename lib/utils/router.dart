@@ -11,6 +11,7 @@ import '../views/tools/breakeven_calculator_view.dart';
 import '../views/tools/dosage_calculator_view.dart';
 import '../views/tools/weight_estimator_view.dart';
 import '../views/tools/pork_lookup_view.dart';
+import '../views/tools/net_to_gate_view.dart';
 import '../views/settings/settings_view.dart';
 import '../views/pastures/pastures_view.dart';
 import '../views/tasks/tasks_view.dart';
@@ -104,6 +105,11 @@ final appRouter = GoRouter(
       path: '/tools/pork',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const PorkLookupView(),
+    ),
+    GoRoute(
+      path: '/tools/calculator',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const NetToGateView(),
     ),
     // Settings
     GoRoute(

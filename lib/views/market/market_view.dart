@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../models/market_data.dart';
 import '../../providers/providers.dart';
@@ -83,6 +84,11 @@ class _MarketViewState extends ConsumerState<MarketView> {
       appBar: AppBar(
         title: const Text('Market'),
         actions: [
+          IconButton(
+            tooltip: 'Calf Check — net to your gate',
+            icon: const Icon(Icons.payments, color: AppTheme.earthGreen),
+            onPressed: () => context.push('/tools/calculator'),
+          ),
           IconButton(
             tooltip: 'Refresh market data',
             icon: const Icon(Icons.refresh, color: AppTheme.earthGreen),
