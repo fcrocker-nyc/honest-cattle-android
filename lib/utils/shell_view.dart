@@ -27,6 +27,10 @@ class ShellView extends StatelessWidget {
             label: 'Market',
           ),
           BottomNavigationBarItem(
+            icon: Icon(Icons.payments),
+            label: 'Calf Check',
+          ),
+          BottomNavigationBarItem(
             icon: Icon(Icons.cloud),
             label: 'Weather',
           ),
@@ -42,8 +46,9 @@ class ShellView extends StatelessWidget {
   int _calculateSelectedIndex(BuildContext context) {
     final location = GoRouterState.of(context).uri.path;
     if (location.startsWith('/market')) return 1;
-    if (location.startsWith('/weather')) return 2;
-    if (location.startsWith('/herd')) return 3;
+    if (location.startsWith('/calculator')) return 2;
+    if (location.startsWith('/weather')) return 3;
+    if (location.startsWith('/herd')) return 4;
     return 0;
   }
 
@@ -56,9 +61,12 @@ class ShellView extends StatelessWidget {
         context.go('/market');
         break;
       case 2:
-        context.go('/weather');
+        context.go('/calculator');
         break;
       case 3:
+        context.go('/weather');
+        break;
+      case 4:
         context.go('/herd');
         break;
     }

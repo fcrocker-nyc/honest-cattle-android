@@ -44,6 +44,12 @@ final appRouter = GoRouter(
           ),
         ),
         GoRoute(
+          path: '/calculator',
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: NetToGateView(),
+          ),
+        ),
+        GoRoute(
           path: '/weather',
           pageBuilder: (context, state) => const NoTransitionPage(
             child: WeatherView(),
@@ -105,11 +111,6 @@ final appRouter = GoRouter(
       path: '/tools/pork',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const PorkLookupView(),
-    ),
-    GoRoute(
-      path: '/tools/calculator',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const NetToGateView(),
     ),
     // Settings
     GoRoute(

@@ -54,11 +54,13 @@ class _ToolsViewState extends State<ToolsView> {
                 ),
                 const SizedBox(width: 12),
                 _ToolCard(
-                  title: 'Calf Check',
-                  subtitle: 'Net to your gate',
-                  icon: Icons.payments,
-                  color: const Color(0xFF5C6B34), // HC olive — matches the calculator
-                  onTap: () => context.push('/tools/calculator'),
+                  title: 'Shipping',
+                  subtitle: 'Plan ship dates',
+                  icon: Icons.local_shipping,
+                  color: Colors.orange,
+                  onTap: () {
+                    // Shipping planner
+                  },
                 ),
               ],
             ),
