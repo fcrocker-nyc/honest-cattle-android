@@ -1,30 +1,35 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  // Palette matched to the iOS HonestCattleApp (App/Theme.swift).
-  // Primary accent — Deep green (#2D5016)
-  static const Color earthGreen = Color(0xFF2D5016);
-  // Secondary accent — Warm brown (#8B6914)
-  static const Color warmBrown = Color(0xFF8B6914);
-  // Background tint — Cream (#FFF8E7)
-  static const Color creamBackground = Color(0xFFFFF8E7);
-  // Body text — HC ink (#1F1A14)
-  static const Color darkBrown = Color(0xFF1F1A14);
+  // Palette matched to honestcattle.net (counties / auction-trends redesign,
+  // June 2026). Named constants kept for back-compat; values point at the
+  // canonical HC website tokens so every view picks up the new look.
+  // Primary accent — Olive green (#4A5E3A)
+  static const Color earthGreen = Color(0xFF4A5E3A);
+  // Secondary accent — Saddle brown (#B5651D)
+  static const Color warmBrown = Color(0xFFB5651D);
+  // Background tint — Cream (#F5F0E8)
+  static const Color creamBackground = Color(0xFFF5F0E8);
+  // Body text — HC ink (#2C2C2C)
+  static const Color darkBrown = Color(0xFF2C2C2C);
   static const Color lightGreen = Color(0xFF81C784);
   // Weather / info — Sky blue (#4A90D9)
   static const Color skyBlue = Color(0xFF4A90D9);
   static const Color alertOrange = Color(0xFFFF9800);
-  // Alerts / warnings — Earth red (#A0522D)
-  static const Color errorRed = Color(0xFFA0522D);
+  // Alerts / warnings — HC dark red (#8B0000)
+  static const Color errorRed = Color(0xFF8B0000);
 
-  // HC website-aligned palette (from honestcattle.net)
-  static const Color hcInk = Color(0xFF1F1A14);
-  static const Color hcEspresso = Color(0xFF3C2E1E);
-  static const Color hcForest = Color(0xFF4A6B3D);
-  static const Color hcParchment = Color(0xFFF6F1E7);
-  static const Color hcLightTan = Color(0xFFFAF6EC);
-  static const Color hcTanRule = Color(0xFFD8CCB7);
-  static const Color hcMutedBrown = Color(0xFF6B5A47);
+  // HC website-aligned palette (exact tokens from honestcattle.net).
+  static const Color hcInk = Color(0xFF2C2C2C);
+  static const Color hcForestDark = Color(0xFF3A4B2E); // dark olive — headings
+  static const Color hcForest = Color(0xFF4A5E3A); // olive — primary accent
+  static const Color hcSaddle = Color(0xFFB5651D); // saddle brown — links
+  static const Color hcAlert = Color(0xFF8B0000); // dark red — alerts
+  static const Color hcParchment = Color(0xFFF5F0E8); // cream — background
+  static const Color hcCard = Color(0xFFFEFCF9); // off-white — cards
+  static const Color hcCallout = Color(0xFFEFEADE); // light cream — callouts
+  static const Color hcTanRule = Color(0xFFD4C9B8); // tan — rules/dividers
+  static const Color hcMutedBrown = Color(0xFF6B6559); // muted brown-grey
 
   static const double minTapTarget = 48.0;
   static const double cardCornerRadius = 12.0;
@@ -40,7 +45,7 @@ class AppTheme {
         seedColor: earthGreen,
         primary: earthGreen,
         secondary: warmBrown,
-        surface: Colors.white,
+        surface: hcCard,
         error: errorRed,
       ),
       scaffoldBackgroundColor: creamBackground,
@@ -55,7 +60,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(cardCornerRadius),
         ),
-        color: Colors.white,
+        color: hcCard,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -127,7 +132,7 @@ class AppTheme {
         ),
       ),
       dividerTheme: const DividerThemeData(
-        color: Color(0xFFE0E0E0),
+        color: hcTanRule,
         thickness: 1,
       ),
     );
