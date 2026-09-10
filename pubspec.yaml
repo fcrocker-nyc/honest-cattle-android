@@ -1,7 +1,7 @@
 name: honest_cattle
 description: "HonestCattle - Complete cattle management app for ranchers"
 publish_to: 'none'
-version: 2.4.0+10
+version: 2.5.0+11
 
 environment:
   sdk: ^3.11.1
@@ -45,6 +45,9 @@ dependencies:
   # HTTP
   http: ^1.2.1
   url_launcher: ^6.3.0
+
+  # HTML parsing (HC Weekly Forecast bands for herd valuation)
+  html: ^0.15.4
 
   # WebView (Calf Check calculator — loads the CDN bundle)
   webview_flutter: ^4.7.0

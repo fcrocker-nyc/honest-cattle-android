@@ -9,6 +9,8 @@ import '../services/notification_service.dart';
 import '../services/sync_service.dart';
 import '../services/ble_service.dart';
 import '../services/hc_data_service.dart';
+import '../services/cattle_valuation_service.dart';
+import '../models/cattle_valuation.dart';
 
 // Database provider
 final databaseProvider = Provider<AppDatabase>((ref) {
@@ -106,6 +108,83 @@ final videoAuctionProvider = FutureProvider<VideoAuctionSnapshot?>((ref) async {
 // Grid cash + futures snapshot — feeds the forecast→futures variance bridge.
 final gridFuturesProvider = FutureProvider<GridFutures?>((ref) async {
   return ref.watch(hcDataServiceProvider).fetchGridFutures();
+});
+
+// Herd valuation: forecast service + editable price book + latest weights.
+final cattleValuationServiceProvider =
+    Provider<CattleValuationService>((ref) => CattleValuationService());
+
+class PriceBookNotifier extends Notifier<PriceBook> {
+  static const _key = 'price_book_v1';
+
+  @override
+  PriceBook build() {
+    _load();
+    return PriceBook();
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final s = prefs.getString(_key);
+    if (s != null) {
+      try {
+        state = PriceBook.decode(s);
+      } catch (_) {}
+    }
+    await _refreshIfNeeded();
+  }
+
+  Future<void> _persist() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_key, state.encode());
+  }
+
+  Future<void> _refreshIfNeeded() async {
+    final book = state;
+    final days = DateTime.now().difference(book.asOfDate).inDays;
+    if (!book.isSeed && days < 5) return;
+    await refreshFromForecast();
+  }
+
+  /// Pulls the latest published forecast bands. Returns true on success.
+  Future<bool> refreshFromForecast() async {
+    try {
+      final bands =
+          await ref.read(cattleValuationServiceProvider).fetchLatest();
+      final b = state.copy()..applyForecast(bands);
+      state = b;
+      await _persist();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Replaces the whole book (used by the editor on Done) and persists it.
+  Future<void> replace(PriceBook book) async {
+    state = book;
+    await _persist();
+  }
+}
+
+final priceBookProvider =
+    NotifierProvider<PriceBookNotifier, PriceBook>(PriceBookNotifier.new);
+
+// Latest recorded weight per animal (from WeightRecords), used for valuation.
+final latestWeightsProvider = StreamProvider<Map<String, double>>((ref) {
+  final db = ref.watch(databaseProvider);
+  return db.select(db.weightRecords).watch().map((records) {
+    final latestDate = <String, DateTime>{};
+    final latest = <String, double>{};
+    for (final r in records) {
+      final prev = latestDate[r.animalId];
+      if (prev == null || r.date.isAfter(prev)) {
+        latestDate[r.animalId] = r.date;
+        latest[r.animalId] = r.weight;
+      }
+    }
+    return latest;
+  });
 });
 
 // Animals providers

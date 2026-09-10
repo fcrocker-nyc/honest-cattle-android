@@ -2401,6 +2401,16 @@ class $WeightRecordsTable extends WeightRecords
     type: DriftSqlType.double,
     requiredDuringInsert: true,
   );
+  @override
+  late final GeneratedColumnWithTypeConverter<WeighMethod, String> method =
+      GeneratedColumn<String>(
+        'method',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('scale'),
+      ).withConverter<WeighMethod>($WeightRecordsTable.$convertermethod);
   static const VerificationMeta _notesMeta = const VerificationMeta('notes');
   @override
   late final GeneratedColumn<String> notes = GeneratedColumn<String>(
@@ -2438,6 +2448,7 @@ class $WeightRecordsTable extends WeightRecords
     animalId,
     date,
     weight,
+    method,
     notes,
     createdAt,
     syncStatus,
@@ -2522,6 +2533,12 @@ class $WeightRecordsTable extends WeightRecords
         DriftSqlType.double,
         data['${effectivePrefix}weight'],
       )!,
+      method: $WeightRecordsTable.$convertermethod.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}method'],
+        )!,
+      ),
       notes: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}notes'],
@@ -2544,6 +2561,8 @@ class $WeightRecordsTable extends WeightRecords
     return $WeightRecordsTable(attachedDatabase, alias);
   }
 
+  static TypeConverter<WeighMethod, String> $convertermethod =
+      const WeighMethodConverter();
   static TypeConverter<SyncStatus, String> $convertersyncStatus =
       const SyncStatusConverter();
 }
@@ -2553,6 +2572,7 @@ class WeightRecord extends DataClass implements Insertable<WeightRecord> {
   final String animalId;
   final DateTime date;
   final double weight;
+  final WeighMethod method;
   final String notes;
   final DateTime createdAt;
   final SyncStatus syncStatus;
@@ -2561,6 +2581,7 @@ class WeightRecord extends DataClass implements Insertable<WeightRecord> {
     required this.animalId,
     required this.date,
     required this.weight,
+    required this.method,
     required this.notes,
     required this.createdAt,
     required this.syncStatus,
@@ -2572,6 +2593,11 @@ class WeightRecord extends DataClass implements Insertable<WeightRecord> {
     map['animal_id'] = Variable<String>(animalId);
     map['date'] = Variable<DateTime>(date);
     map['weight'] = Variable<double>(weight);
+    {
+      map['method'] = Variable<String>(
+        $WeightRecordsTable.$convertermethod.toSql(method),
+      );
+    }
     map['notes'] = Variable<String>(notes);
     map['created_at'] = Variable<DateTime>(createdAt);
     {
@@ -2588,6 +2614,7 @@ class WeightRecord extends DataClass implements Insertable<WeightRecord> {
       animalId: Value(animalId),
       date: Value(date),
       weight: Value(weight),
+      method: Value(method),
       notes: Value(notes),
       createdAt: Value(createdAt),
       syncStatus: Value(syncStatus),
@@ -2604,6 +2631,7 @@ class WeightRecord extends DataClass implements Insertable<WeightRecord> {
       animalId: serializer.fromJson<String>(json['animalId']),
       date: serializer.fromJson<DateTime>(json['date']),
       weight: serializer.fromJson<double>(json['weight']),
+      method: serializer.fromJson<WeighMethod>(json['method']),
       notes: serializer.fromJson<String>(json['notes']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       syncStatus: serializer.fromJson<SyncStatus>(json['syncStatus']),
@@ -2617,6 +2645,7 @@ class WeightRecord extends DataClass implements Insertable<WeightRecord> {
       'animalId': serializer.toJson<String>(animalId),
       'date': serializer.toJson<DateTime>(date),
       'weight': serializer.toJson<double>(weight),
+      'method': serializer.toJson<WeighMethod>(method),
       'notes': serializer.toJson<String>(notes),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'syncStatus': serializer.toJson<SyncStatus>(syncStatus),
@@ -2628,6 +2657,7 @@ class WeightRecord extends DataClass implements Insertable<WeightRecord> {
     String? animalId,
     DateTime? date,
     double? weight,
+    WeighMethod? method,
     String? notes,
     DateTime? createdAt,
     SyncStatus? syncStatus,
@@ -2636,6 +2666,7 @@ class WeightRecord extends DataClass implements Insertable<WeightRecord> {
     animalId: animalId ?? this.animalId,
     date: date ?? this.date,
     weight: weight ?? this.weight,
+    method: method ?? this.method,
     notes: notes ?? this.notes,
     createdAt: createdAt ?? this.createdAt,
     syncStatus: syncStatus ?? this.syncStatus,
@@ -2646,6 +2677,7 @@ class WeightRecord extends DataClass implements Insertable<WeightRecord> {
       animalId: data.animalId.present ? data.animalId.value : this.animalId,
       date: data.date.present ? data.date.value : this.date,
       weight: data.weight.present ? data.weight.value : this.weight,
+      method: data.method.present ? data.method.value : this.method,
       notes: data.notes.present ? data.notes.value : this.notes,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       syncStatus: data.syncStatus.present
@@ -2661,6 +2693,7 @@ class WeightRecord extends DataClass implements Insertable<WeightRecord> {
           ..write('animalId: $animalId, ')
           ..write('date: $date, ')
           ..write('weight: $weight, ')
+          ..write('method: $method, ')
           ..write('notes: $notes, ')
           ..write('createdAt: $createdAt, ')
           ..write('syncStatus: $syncStatus')
@@ -2669,8 +2702,16 @@ class WeightRecord extends DataClass implements Insertable<WeightRecord> {
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, animalId, date, weight, notes, createdAt, syncStatus);
+  int get hashCode => Object.hash(
+    id,
+    animalId,
+    date,
+    weight,
+    method,
+    notes,
+    createdAt,
+    syncStatus,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2679,6 +2720,7 @@ class WeightRecord extends DataClass implements Insertable<WeightRecord> {
           other.animalId == this.animalId &&
           other.date == this.date &&
           other.weight == this.weight &&
+          other.method == this.method &&
           other.notes == this.notes &&
           other.createdAt == this.createdAt &&
           other.syncStatus == this.syncStatus);
@@ -2689,6 +2731,7 @@ class WeightRecordsCompanion extends UpdateCompanion<WeightRecord> {
   final Value<String> animalId;
   final Value<DateTime> date;
   final Value<double> weight;
+  final Value<WeighMethod> method;
   final Value<String> notes;
   final Value<DateTime> createdAt;
   final Value<SyncStatus> syncStatus;
@@ -2698,6 +2741,7 @@ class WeightRecordsCompanion extends UpdateCompanion<WeightRecord> {
     this.animalId = const Value.absent(),
     this.date = const Value.absent(),
     this.weight = const Value.absent(),
+    this.method = const Value.absent(),
     this.notes = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.syncStatus = const Value.absent(),
@@ -2708,6 +2752,7 @@ class WeightRecordsCompanion extends UpdateCompanion<WeightRecord> {
     required String animalId,
     required DateTime date,
     required double weight,
+    this.method = const Value.absent(),
     this.notes = const Value.absent(),
     required DateTime createdAt,
     this.syncStatus = const Value.absent(),
@@ -2722,6 +2767,7 @@ class WeightRecordsCompanion extends UpdateCompanion<WeightRecord> {
     Expression<String>? animalId,
     Expression<DateTime>? date,
     Expression<double>? weight,
+    Expression<String>? method,
     Expression<String>? notes,
     Expression<DateTime>? createdAt,
     Expression<String>? syncStatus,
@@ -2732,6 +2778,7 @@ class WeightRecordsCompanion extends UpdateCompanion<WeightRecord> {
       if (animalId != null) 'animal_id': animalId,
       if (date != null) 'date': date,
       if (weight != null) 'weight': weight,
+      if (method != null) 'method': method,
       if (notes != null) 'notes': notes,
       if (createdAt != null) 'created_at': createdAt,
       if (syncStatus != null) 'sync_status': syncStatus,
@@ -2744,6 +2791,7 @@ class WeightRecordsCompanion extends UpdateCompanion<WeightRecord> {
     Value<String>? animalId,
     Value<DateTime>? date,
     Value<double>? weight,
+    Value<WeighMethod>? method,
     Value<String>? notes,
     Value<DateTime>? createdAt,
     Value<SyncStatus>? syncStatus,
@@ -2754,6 +2802,7 @@ class WeightRecordsCompanion extends UpdateCompanion<WeightRecord> {
       animalId: animalId ?? this.animalId,
       date: date ?? this.date,
       weight: weight ?? this.weight,
+      method: method ?? this.method,
       notes: notes ?? this.notes,
       createdAt: createdAt ?? this.createdAt,
       syncStatus: syncStatus ?? this.syncStatus,
@@ -2775,6 +2824,11 @@ class WeightRecordsCompanion extends UpdateCompanion<WeightRecord> {
     }
     if (weight.present) {
       map['weight'] = Variable<double>(weight.value);
+    }
+    if (method.present) {
+      map['method'] = Variable<String>(
+        $WeightRecordsTable.$convertermethod.toSql(method.value),
+      );
     }
     if (notes.present) {
       map['notes'] = Variable<String>(notes.value);
@@ -2800,6 +2854,7 @@ class WeightRecordsCompanion extends UpdateCompanion<WeightRecord> {
           ..write('animalId: $animalId, ')
           ..write('date: $date, ')
           ..write('weight: $weight, ')
+          ..write('method: $method, ')
           ..write('notes: $notes, ')
           ..write('createdAt: $createdAt, ')
           ..write('syncStatus: $syncStatus, ')
@@ -11137,6 +11192,7 @@ typedef $$WeightRecordsTableCreateCompanionBuilder =
       required String animalId,
       required DateTime date,
       required double weight,
+      Value<WeighMethod> method,
       Value<String> notes,
       required DateTime createdAt,
       Value<SyncStatus> syncStatus,
@@ -11148,6 +11204,7 @@ typedef $$WeightRecordsTableUpdateCompanionBuilder =
       Value<String> animalId,
       Value<DateTime> date,
       Value<double> weight,
+      Value<WeighMethod> method,
       Value<String> notes,
       Value<DateTime> createdAt,
       Value<SyncStatus> syncStatus,
@@ -11205,6 +11262,12 @@ class $$WeightRecordsTableFilterComposer
     column: $table.weight,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnWithTypeConverterFilters<WeighMethod, WeighMethod, String> get method =>
+      $composableBuilder(
+        column: $table.method,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
 
   ColumnFilters<String> get notes => $composableBuilder(
     column: $table.notes,
@@ -11270,6 +11333,11 @@ class $$WeightRecordsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get method => $composableBuilder(
+    column: $table.method,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get notes => $composableBuilder(
     column: $table.notes,
     builder: (column) => ColumnOrderings(column),
@@ -11326,6 +11394,9 @@ class $$WeightRecordsTableAnnotationComposer
 
   GeneratedColumn<double> get weight =>
       $composableBuilder(column: $table.weight, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<WeighMethod, String> get method =>
+      $composableBuilder(column: $table.method, builder: (column) => column);
 
   GeneratedColumn<String> get notes =>
       $composableBuilder(column: $table.notes, builder: (column) => column);
@@ -11395,6 +11466,7 @@ class $$WeightRecordsTableTableManager
                 Value<String> animalId = const Value.absent(),
                 Value<DateTime> date = const Value.absent(),
                 Value<double> weight = const Value.absent(),
+                Value<WeighMethod> method = const Value.absent(),
                 Value<String> notes = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<SyncStatus> syncStatus = const Value.absent(),
@@ -11404,6 +11476,7 @@ class $$WeightRecordsTableTableManager
                 animalId: animalId,
                 date: date,
                 weight: weight,
+                method: method,
                 notes: notes,
                 createdAt: createdAt,
                 syncStatus: syncStatus,
@@ -11415,6 +11488,7 @@ class $$WeightRecordsTableTableManager
                 required String animalId,
                 required DateTime date,
                 required double weight,
+                Value<WeighMethod> method = const Value.absent(),
                 Value<String> notes = const Value.absent(),
                 required DateTime createdAt,
                 Value<SyncStatus> syncStatus = const Value.absent(),
@@ -11424,6 +11498,7 @@ class $$WeightRecordsTableTableManager
                 animalId: animalId,
                 date: date,
                 weight: weight,
+                method: method,
                 notes: notes,
                 createdAt: createdAt,
                 syncStatus: syncStatus,

@@ -5,6 +5,8 @@ import '../../utils/theme.dart';
 import '../../widgets/common_widgets.dart';
 import '../../providers/providers.dart';
 import '../../models/database.dart';
+import '../../models/cattle_valuation.dart';
+import 'market_prices_view.dart';
 
 class HerdView extends ConsumerStatefulWidget {
   const HerdView({super.key});
@@ -22,6 +24,8 @@ class _HerdViewState extends ConsumerState<HerdView> {
   @override
   Widget build(BuildContext context) {
     final animalsAsync = ref.watch(animalsProvider);
+    final priceBook = ref.watch(priceBookProvider);
+    final weights = ref.watch(latestWeightsProvider).valueOrNull ?? const {};
 
     return Scaffold(
       appBar: AppBar(
@@ -39,6 +43,11 @@ class _HerdViewState extends ConsumerState<HerdView> {
       ),
       body: Column(
         children: [
+          _buildHerdValueHeader(
+            animalsAsync.valueOrNull ?? const [],
+            priceBook,
+            weights,
+          ),
           _buildSearchAndFilter(),
           Expanded(
             child: animalsAsync.when(
@@ -47,13 +56,96 @@ class _HerdViewState extends ConsumerState<HerdView> {
                 if (filtered.isEmpty) {
                   return _buildEmptyState(animals.isEmpty);
                 }
-                return _buildAnimalList(filtered);
+                return _buildAnimalList(filtered, priceBook, weights);
               },
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(child: Text('Error: $e')),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildHerdValueHeader(
+    List<Animal> animals,
+    PriceBook book,
+    Map<String, double> weights,
+  ) {
+    final active = animals
+        .where((a) =>
+            a.status != AnimalStatus.sold &&
+            a.status != AnimalStatus.deceased)
+        .toList();
+    final total = CattleValuationEngine.herdValue(active, weights, book);
+    final totalStr = AnimalValuation(
+      cattleClass: CattleClass.feederSteer,
+      weight: null,
+      weightIsProjected: false,
+      outsideForecastBands: false,
+      unitPrice: 0,
+      value: total,
+      basis: '',
+    ).formattedValue;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+          AppTheme.standardPadding, AppTheme.standardPadding,
+          AppTheme.standardPadding, 0),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppTheme.cardCornerRadius),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const MarketPricesView()),
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(AppTheme.standardPadding),
+          decoration: BoxDecoration(
+            color: AppTheme.hcCard,
+            borderRadius: BorderRadius.circular(AppTheme.cardCornerRadius),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 2,
+                offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Herd Market Value',
+                        style:
+                            TextStyle(fontSize: 12, color: Colors.grey[600])),
+                    const SizedBox(height: 2),
+                    Text(
+                      totalStr,
+                      style: const TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.earthGreen,
+                      ),
+                    ),
+                    Text('${active.length} head · estimate',
+                        style:
+                            TextStyle(fontSize: 11, color: Colors.grey[600])),
+                  ],
+                ),
+              ),
+              const Column(
+                children: [
+                  Icon(Icons.tune, color: AppTheme.earthGreen),
+                  SizedBox(height: 4),
+                  Text('Prices',
+                      style:
+                          TextStyle(fontSize: 11, color: AppTheme.earthGreen)),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -179,13 +271,19 @@ class _HerdViewState extends ConsumerState<HerdView> {
     );
   }
 
-  Widget _buildAnimalList(List<Animal> animals) {
+  Widget _buildAnimalList(
+    List<Animal> animals,
+    PriceBook book,
+    Map<String, double> weights,
+  ) {
     final withdrawalIds =
         ref.watch(withdrawalAnimalIdsProvider).valueOrNull ?? {};
     return ListView.builder(
       itemCount: animals.length,
       itemBuilder: (context, index) {
         final animal = animals[index];
+        final valuation =
+            CattleValuationEngine.value(animal, weights[animal.id], book);
         return Dismissible(
           key: Key(animal.id),
           direction: DismissDirection.endToStart,
@@ -225,6 +323,7 @@ class _HerdViewState extends ConsumerState<HerdView> {
           child: _AnimalRow(
             animal: animal,
             hasActiveWithdrawal: withdrawalIds.contains(animal.id),
+            valuation: valuation,
             onTap: () => context.push('/animal/${animal.id}'),
           ),
         );
@@ -341,11 +440,13 @@ enum _SortOrder {
 class _AnimalRow extends StatelessWidget {
   final Animal animal;
   final bool hasActiveWithdrawal;
+  final AnimalValuation? valuation;
   final VoidCallback onTap;
 
   const _AnimalRow({
     required this.animal,
     required this.hasActiveWithdrawal,
+    required this.valuation,
     required this.onTap,
   });
 
@@ -451,9 +552,25 @@ class _AnimalRow extends StatelessWidget {
                 ],
               ),
             ),
-            StatusBadge(
-              text: animal.status.label,
-              color: _statusColor,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                StatusBadge(
+                  text: animal.status.label,
+                  color: _statusColor,
+                ),
+                if (valuation != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    valuation!.formattedValue,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.earthGreen,
+                    ),
+                  ),
+                ],
+              ],
             ),
             const SizedBox(width: 4),
             const Icon(Icons.chevron_right, color: Colors.grey, size: 20),

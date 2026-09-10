@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:uuid/uuid.dart';
+import 'package:drift/drift.dart' show Value;
 import '../../utils/theme.dart';
 import '../../widgets/common_widgets.dart';
+import 'package:intl/intl.dart';
 import '../../providers/providers.dart';
 import '../../models/database.dart';
+import '../../models/cattle_valuation.dart';
+import 'market_prices_view.dart';
 
 class AnimalDetailView extends ConsumerWidget {
   final String animalId;
@@ -43,6 +48,13 @@ class AnimalDetailView extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildHeader(animal),
+                const SizedBox(height: 16),
+                _buildMarketValueCard(
+                  context,
+                  animal,
+                  ref.watch(priceBookProvider),
+                  _latestWeight(weightsAsync.valueOrNull),
+                ),
                 const SizedBox(height: 16),
                 _buildInfoSection(animal),
                 const SizedBox(height: 16),
@@ -106,7 +118,8 @@ class AnimalDetailView extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 weightsAsync.when(
-                  data: (weights) => _buildWeightSection(context, weights),
+                  data: (weights) =>
+                      _buildWeightSection(context, ref, weights),
                   loading: () => const LoadingCard(title: 'Loading weights...'),
                   error: (e, _) => ErrorCard(message: e.toString()),
                 ),
@@ -129,6 +142,168 @@ class AnimalDetailView extends ConsumerWidget {
         appBar: AppBar(),
         body: Center(child: Text('Error: $e')),
       ),
+    );
+  }
+
+  double? _latestWeight(List<WeightRecord>? weights) {
+    if (weights == null || weights.isEmpty) return null;
+    // Provider orders desc by date, so the first is the most recent.
+    return weights.first.weight;
+  }
+
+  Widget _buildMarketValueCard(
+    BuildContext context,
+    Animal animal,
+    PriceBook book,
+    double? latestWeight,
+  ) {
+    final v = CattleValuationEngine.value(animal, latestWeight, book);
+
+    Widget infoNote(String text) => Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.info_outline, size: 14, color: Colors.grey[600]),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(text,
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+              ),
+            ],
+          ),
+        );
+
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Estimated Market Value',
+                  style:
+                      TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              TextButton.icon(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                      builder: (_) => const MarketPricesView()),
+                ),
+                icon: const Icon(Icons.tune, size: 16),
+                label: const Text('Prices'),
+                style: TextButton.styleFrom(
+                    foregroundColor: AppTheme.earthGreen),
+              ),
+            ],
+          ),
+          if (v == null)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                _noValueMessage(animal),
+                style: TextStyle(color: Colors.grey[600]),
+              ),
+            )
+          else ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  v.formattedValue,
+                  style: const TextStyle(
+                    fontSize: 34,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.earthGreen,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.earthGreen.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(v.cattleClass.label,
+                      style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.earthGreen)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(v.basis,
+                style: TextStyle(fontSize: 14, color: Colors.grey[700])),
+            if (v.weightIsProjected)
+              infoNote(
+                  'Weight projected from purchase — record a current weight for a sharper estimate.'),
+            if (v.outsideForecastBands)
+              infoNote(
+                  "Weight is outside the forecast's 550–649 lb calf bands, so the price is extrapolated."),
+            _profitLossRow(animal, v),
+            const SizedBox(height: 6),
+            Text(
+              '${book.quarterLabel} forecast bands · priced as of ${DateFormat.yMMMd().format(book.asOfDate)}',
+              style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String _noValueMessage(Animal animal) {
+    switch (animal.status) {
+      case AnimalStatus.sold:
+        return 'This animal is marked sold and no longer carries a live market value.';
+      case AnimalStatus.deceased:
+        return 'This animal is marked deceased.';
+      default:
+        return "Record a weight to estimate this animal's market value.";
+    }
+  }
+
+  Widget _profitLossRow(Animal animal, AnimalValuation v) {
+    final pw = animal.purchaseWeight;
+    final pp = animal.purchasePrice;
+    if (pw == null || pp == null || pw <= 0 || pp <= 0) {
+      return const SizedBox.shrink();
+    }
+    final cost = (pw / 100.0) * pp;
+    final pl = v.value - cost;
+    final positive = pl >= 0;
+    final money = AnimalValuation(
+      cattleClass: v.cattleClass,
+      weight: null,
+      weightIsProjected: false,
+      outsideForecastBands: false,
+      unitPrice: 0,
+      value: pl.abs(),
+      basis: '',
+    ).formattedValue;
+    return Column(
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(vertical: 6),
+          child: Divider(height: 1),
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('vs. purchase',
+                style: TextStyle(fontSize: 14, color: Colors.grey[700])),
+            Text(
+              positive ? '+$money' : '−$money',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: positive ? Colors.green : Colors.red,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -325,7 +500,8 @@ class AnimalDetailView extends ConsumerWidget {
     );
   }
 
-  Widget _buildWeightSection(BuildContext context, List<WeightRecord> weights) {
+  Widget _buildWeightSection(
+      BuildContext context, WidgetRef ref, List<WeightRecord> weights) {
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -339,9 +515,7 @@ class AnimalDetailView extends ConsumerWidget {
               ),
               IconButton(
                 icon: const Icon(Icons.add_circle, color: AppTheme.earthGreen),
-                onPressed: () {
-                  // Navigate to add weight record
-                },
+                onPressed: () => _showAddWeightDialog(context, ref),
               ),
             ],
           ),
@@ -356,8 +530,110 @@ class AnimalDetailView extends ConsumerWidget {
               ),
             )
           else
-            ...weights.map((record) => _WeightRecordRow(record: record)),
+            ...weights.map((record) => Dismissible(
+                  key: Key(record.id),
+                  direction: DismissDirection.endToStart,
+                  background: Container(
+                    color: Colors.red,
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.only(right: 16),
+                    child: const Icon(Icons.delete, color: Colors.white),
+                  ),
+                  onDismissed: (_) async {
+                    final db = ref.read(databaseProvider);
+                    await (db.delete(db.weightRecords)
+                          ..where((t) => t.id.equals(record.id)))
+                        .go();
+                  },
+                  child: _WeightRecordRow(record: record),
+                )),
         ],
+      ),
+    );
+  }
+
+  Future<void> _showAddWeightDialog(
+      BuildContext context, WidgetRef ref) async {
+    final weightController = TextEditingController();
+    DateTime date = DateTime.now();
+    WeighMethod method = WeighMethod.scale;
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: const Text('Add Weight'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: weightController,
+                autofocus: true,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Weight (lbs)',
+                ),
+              ),
+              const SizedBox(height: 16),
+              SegmentedButton<WeighMethod>(
+                segments: WeighMethod.values
+                    .map((m) => ButtonSegment(value: m, label: Text(m.label)))
+                    .toList(),
+                selected: {method},
+                showSelectedIcon: false,
+                onSelectionChanged: (s) => setState(() => method = s.first),
+              ),
+              const SizedBox(height: 16),
+              InkWell(
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: ctx,
+                    initialDate: date,
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime.now(),
+                  );
+                  if (picked != null) setState(() => date = picked);
+                },
+                child: InputDecorator(
+                  decoration: const InputDecoration(labelText: 'Date'),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('${date.month}/${date.day}/${date.year}'),
+                      const Icon(Icons.calendar_today, size: 20),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                final w = double.tryParse(weightController.text.trim());
+                if (w == null || w <= 0) return;
+                final db = ref.read(databaseProvider);
+                final now = DateTime.now();
+                await db.into(db.weightRecords).insert(
+                      WeightRecordsCompanion.insert(
+                        id: const Uuid().v4(),
+                        animalId: animalId,
+                        date: date,
+                        weight: w,
+                        method: Value(method),
+                        createdAt: now,
+                      ),
+                    );
+                if (ctx.mounted) Navigator.pop(ctx);
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -604,9 +880,18 @@ class _WeightRecordRow extends StatelessWidget {
             '${record.date.month}/${record.date.day}/${record.date.year}',
             style: TextStyle(color: Colors.grey[600]),
           ),
-          Text(
-            '${record.weight.round()} lbs',
-            style: const TextStyle(fontWeight: FontWeight.bold),
+          Row(
+            children: [
+              Text(
+                record.method.label,
+                style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                '${record.weight.round()} lbs',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
           ),
         ],
       ),

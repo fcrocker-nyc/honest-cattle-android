@@ -31,12 +31,16 @@ class _AnimalFormViewState extends ConsumerState<AnimalFormView> {
   final _notesController = TextEditingController();
   final _purchaseWeightController = TextEditingController();
   final _purchasePriceController = TextEditingController();
+  final _currentWeightController = TextEditingController();
+  double? _loadedLatestWeight;
+  DateTime? _existingLatestDate;
 
   DateTime _dateOfBirth = DateTime.now();
   AnimalSex _sex = AnimalSex.steer;
   AnimalStatus _status = AnimalStatus.active;
   bool _hasPurchaseInfo = false;
   DateTime _purchaseDate = DateTime.now();
+  DateTime _currentWeightDate = DateTime.now();
 
   bool _isLoading = false;
   Animal? _existingAnimal;
@@ -58,9 +62,21 @@ class _AnimalFormViewState extends ConsumerState<AnimalFormView> {
           ..where((t) => t.id.equals(widget.animalId!)))
         .getSingleOrNull();
 
+    // Latest recorded weight (most recent WeightRecord) pre-fills the field.
+    final latestWeight = await (db.weightRecords.select()
+          ..where((t) => t.animalId.equals(widget.animalId!))
+          ..orderBy([(t) => OrderingTerm.desc(t.date)])
+          ..limit(1))
+        .getSingleOrNull();
+
     if (animal != null) {
       setState(() {
         _existingAnimal = animal;
+        _loadedLatestWeight = latestWeight?.weight;
+        _currentWeightController.text =
+            latestWeight != null ? _trimWeight(latestWeight.weight) : '';
+        _currentWeightDate = latestWeight?.date ?? DateTime.now();
+        _existingLatestDate = latestWeight?.date;
         _tagController.text = animal.tagNumber;
         _breedController.text = animal.breed;
         _dateOfBirth = animal.dateOfBirth;
@@ -87,10 +103,39 @@ class _AnimalFormViewState extends ConsumerState<AnimalFormView> {
     _notesController.dispose();
     _purchaseWeightController.dispose();
     _purchasePriceController.dispose();
+    _currentWeightController.dispose();
     super.dispose();
   }
 
   bool get _isEditing => widget.animalId != null;
+
+  String _trimWeight(double w) =>
+      w == w.roundToDouble() ? w.toStringAsFixed(0) : w.toString();
+
+  bool _sameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  /// Records a new WeightRecord when a positive current weight was entered that
+  /// differs from the latest one on file. Returns nothing; best-effort.
+  Future<void> _recordCurrentWeight(AppDatabase db, String animalId) async {
+    final entered = double.tryParse(_currentWeightController.text.trim());
+    if (entered == null || entered <= 0) return;
+    // Skip only when the same weight AND the same date are already on file.
+    if (_loadedLatestWeight != null &&
+        _loadedLatestWeight == entered &&
+        _existingLatestDate != null &&
+        _sameDay(_existingLatestDate!, _currentWeightDate)) {
+      return;
+    }
+    final now = DateTime.now();
+    await db.into(db.weightRecords).insert(WeightRecordsCompanion.insert(
+          id: const Uuid().v4(),
+          animalId: animalId,
+          date: _currentWeightDate,
+          weight: entered,
+          createdAt: now,
+        ));
+  }
 
   Future<void> _saveAnimal() async {
     if (!_formKey.currentState!.validate()) {
@@ -144,9 +189,11 @@ class _AnimalFormViewState extends ConsumerState<AnimalFormView> {
           purchasePrice: Value(purchasePrice),
           updatedAt: Value(now),
         ));
+        await _recordCurrentWeight(db, _existingAnimal!.id);
       } else {
+        final newId = const Uuid().v4();
         await db.into(db.animals).insert(AnimalsCompanion.insert(
-              id: const Uuid().v4(),
+              id: newId,
               tagNumber: _tagController.text.trim(),
               breed: Value(_breedController.text.trim()),
               dateOfBirth: _dateOfBirth,
@@ -165,6 +212,7 @@ class _AnimalFormViewState extends ConsumerState<AnimalFormView> {
               createdAt: now,
               updatedAt: now,
             ));
+        await _recordCurrentWeight(db, newId);
       }
 
       if (mounted) {
@@ -342,6 +390,25 @@ class _AnimalFormViewState extends ConsumerState<AnimalFormView> {
                     const TextInputType.numberWithOptions(decimal: true),
               ),
             ],
+
+            const SizedBox(height: 24),
+            _buildSectionTitle('Current Weight'),
+            TextFormField(
+              controller: _currentWeightController,
+              decoration: const InputDecoration(
+                labelText: 'Current Weight (lbs)',
+                helperText:
+                    'Used to estimate market value. Saved as a weight record.',
+                helperMaxLines: 2,
+              ),
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 16),
+            _buildDatePicker(
+              label: 'Weight Date',
+              value: _currentWeightDate,
+              onChanged: (date) => setState(() => _currentWeightDate = date),
+            ),
 
             const SizedBox(height: 24),
             _buildSectionTitle('Notes'),

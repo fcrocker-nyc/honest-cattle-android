@@ -90,6 +90,15 @@ enum SyncStatus {
   failed,
 }
 
+enum WeighMethod {
+  scale('Scale'),
+  tape('Tape'),
+  visual('Visual');
+
+  final String label;
+  const WeighMethod(this.label);
+}
+
 // Type converters
 class AnimalSexConverter extends TypeConverter<AnimalSex, String> {
   const AnimalSexConverter();
@@ -171,6 +180,17 @@ class SyncStatusConverter extends TypeConverter<SyncStatus, String> {
   String toSql(SyncStatus value) => value.name;
 }
 
+class WeighMethodConverter extends TypeConverter<WeighMethod, String> {
+  const WeighMethodConverter();
+
+  @override
+  WeighMethod fromSql(String fromDb) =>
+      WeighMethod.values.firstWhere((e) => e.name == fromDb, orElse: () => WeighMethod.scale);
+
+  @override
+  String toSql(WeighMethod value) => value.name;
+}
+
 // Tables
 class Animals extends Table {
   TextColumn get id => text()();
@@ -235,6 +255,7 @@ class WeightRecords extends Table {
   TextColumn get animalId => text().references(Animals, #id)();
   DateTimeColumn get date => dateTime()();
   RealColumn get weight => real()();
+  TextColumn get method => text().map(const WeighMethodConverter()).withDefault(const Constant('scale'))();
   TextColumn get notes => text().withDefault(const Constant(''))();
   DateTimeColumn get createdAt => dateTime()();
   TextColumn get syncStatus => text().map(const SyncStatusConverter()).withDefault(const Constant('synced'))();
@@ -426,7 +447,18 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          // v2: dated weigh-in method (Scale / Tape / Visual).
+          if (from < 2) {
+            await m.addColumn(weightRecords, weightRecords.method);
+          }
+        },
+      );
 
   static LazyDatabase _openConnection() {
     return LazyDatabase(() async {
