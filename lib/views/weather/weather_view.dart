@@ -6,6 +6,7 @@ import '../../widgets/common_widgets.dart';
 import '../../providers/providers.dart';
 import '../../models/weather_data.dart';
 import '../../services/location_service.dart';
+import 'moisture_outlook_card.dart';
 
 class WeatherView extends ConsumerStatefulWidget {
   const WeatherView({super.key});
@@ -123,6 +124,14 @@ class _WeatherViewState extends ConsumerState<WeatherView> {
             _buildSevereWeatherSection(),
             const SizedBox(height: 16),
           ],
+          // The ranch's rolling 1/3/6/12-month moisture outlook. It sits just
+          // under the current conditions because it answers the next question
+          // after "what is it doing now" — what is it expected to do over the
+          // run of a grazing year. Keyed off the ranch county in Settings, not
+          // the device location, so it stays put when the phone leaves the
+          // place. A severe-weather alert still outranks it.
+          const MoistureOutlookCard(showsSetupPrompt: true),
+          const SizedBox(height: 16),
           _buildForecastSection(),
           const SizedBox(height: 16),
           _buildWindChillCard(),

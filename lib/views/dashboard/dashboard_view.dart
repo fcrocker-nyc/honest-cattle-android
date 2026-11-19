@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../models/weather_data.dart';
 import '../../providers/providers.dart';
+import '../weather/moisture_outlook_card.dart';
 import '../../utils/constants.dart';
 import '../../utils/theme.dart';
 import 'dashboard_cards.dart';
@@ -118,6 +119,12 @@ class _DashboardViewState extends ConsumerState<DashboardView> {
                   _weatherPill(),
                   const SizedBox(height: 20),
                   const CountyMoistureCard(),
+                  _gap(ref.watch(ranchCountyProvider).trim().isNotEmpty),
+                  // Conditions first, outlook second — the same order as the
+                  // Weather tab and the website. Compact drops the odds,
+                  // spring and temperature rows; with no county set it
+                  // renders nothing (the settings tip already sits above).
+                  const MoistureOutlookCard(compact: true),
                   _gap(ref.watch(ranchCountyProvider).trim().isNotEmpty),
                   const HcWeeklyForecastCard(),
                   const SizedBox(height: 20),

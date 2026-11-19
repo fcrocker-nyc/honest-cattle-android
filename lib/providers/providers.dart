@@ -8,6 +8,7 @@ import '../services/location_service.dart';
 import '../services/notification_service.dart';
 import '../services/sync_service.dart';
 import '../services/ble_service.dart';
+import '../models/moisture_outlook.dart';
 import '../services/hc_data_service.dart';
 import '../services/cattle_valuation_service.dart';
 import '../models/cattle_valuation.dart';
@@ -82,6 +83,15 @@ final countyMoistureProvider = FutureProvider<CountyMoisture?>((ref) async {
   final county = ref.watch(ranchCountyProvider);
   if (county.trim().isEmpty) return null;
   return ref.watch(hcDataServiceProvider).fetchCountyMoisture(county);
+});
+
+// Rolling 1/3/6/12-month moisture outlook — one file covering all 56 counties.
+// The feed is provided whole rather than per-county so the card can tell
+// "this county has no outlook" (the Texas counties have none) apart from a
+// network failure, which read very differently to a rancher.
+final moistureOutlookFeedProvider =
+    FutureProvider<MoistureOutlookFeed?>((ref) async {
+  return ref.watch(hcDataServiceProvider).fetchMoistureOutlook();
 });
 
 // Weekly / quarterly calf-price forecast.

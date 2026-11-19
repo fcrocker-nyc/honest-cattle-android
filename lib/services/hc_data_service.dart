@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+import '../models/moisture_outlook.dart';
+
 // Fetches the HC published data that backs the iOS dashboard cards:
 //  • per-county moisture JSON  (<county>.json)
 //  • weekly/quarterly calf-price forecast (forecasts_recent.json)
@@ -9,13 +11,27 @@ class HcDataService {
   static const _base =
       'https://raw.githubusercontent.com/fcrocker-nyc/dirk-adams-honest-cattle-data/main/';
 
+  // Collapse a typed county name onto the key the HC data repo uses.
+  // Mirrors SnotelService.normalizeCountyName on iOS — notably "Lewis & Clark"
+  // and "Lewis and Clark" both have to land on `lewis_clark`, which is the key
+  // the feed actually publishes.
+  static String? normalizeCountyName(String raw) {
+    var s = raw.toLowerCase().trim();
+    if (s.endsWith(' county')) {
+      s = s.substring(0, s.length - ' county'.length);
+    }
+    s = s.replaceAll(' and ', ' ');
+    s = s.replaceAll(' & ', ' ');
+    s = s.replaceAll("'", '');
+    s = s.replaceAll('.', '');
+    s = s.replaceAll(RegExp(r'\s+'), ' ').trim();
+    s = s.replaceAll(' ', '_');
+    return s.isEmpty ? null : s;
+  }
+
   Future<CountyMoisture?> fetchCountyMoisture(String county) async {
-    final normalized = county
-        .trim()
-        .toLowerCase()
-        .replaceAll(RegExp(r'\s+county$'), '')
-        .replaceAll(RegExp(r'[\s.]+'), '_');
-    if (normalized.isEmpty) return null;
+    final normalized = normalizeCountyName(county);
+    if (normalized == null) return null;
     final res = await http
         .get(Uri.parse('$_base$normalized.json'))
         .timeout(const Duration(seconds: 15));
@@ -24,6 +40,53 @@ class HcDataService {
       throw Exception('HTTP ${res.statusCode}');
     }
     return CountyMoisture.fromJson(json.decode(res.body));
+  }
+
+  // ---- Moisture outlook ----------------------------------------------------
+  //
+  // All 56 counties arrive in one ~90 KB file and the data only moves monthly,
+  // so a single cached fetch beats one request per county. The cached Future
+  // (not its value) is held, which collapses concurrent callers — the weather
+  // card and the dashboard card load at the same time — onto one request.
+  static const _outlookTtl = Duration(hours: 1);
+  Future<MoistureOutlookFeed>? _outlookInFlight;
+  DateTime? _outlookFetchedAt;
+
+  Future<MoistureOutlookFeed?> fetchMoistureOutlook({bool force = false}) async {
+    final cachedAt = _outlookFetchedAt;
+    final fresh = cachedAt != null &&
+        DateTime.now().difference(cachedAt) < _outlookTtl;
+    if (!force && fresh && _outlookInFlight != null) {
+      try {
+        return await _outlookInFlight!;
+      } catch (_) {
+        // A cached failure must not be served for an hour.
+        _outlookInFlight = null;
+        _outlookFetchedAt = null;
+      }
+    }
+
+    final future = _loadOutlook();
+    _outlookInFlight = future;
+    _outlookFetchedAt = DateTime.now();
+    try {
+      return await future;
+    } catch (_) {
+      _outlookInFlight = null;
+      _outlookFetchedAt = null;
+      return null;
+    }
+  }
+
+  Future<MoistureOutlookFeed> _loadOutlook() async {
+    final res = await http
+        .get(Uri.parse('${_base}moisture_outlook.json'))
+        .timeout(const Duration(seconds: 20));
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception('HTTP ${res.statusCode}');
+    }
+    return MoistureOutlookFeed.fromJson(
+        json.decode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>);
   }
 
   Future<HcForecast?> fetchForecast() async {
