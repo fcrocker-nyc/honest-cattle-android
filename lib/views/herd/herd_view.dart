@@ -78,6 +78,14 @@ class _HerdViewState extends ConsumerState<HerdView> {
             a.status != AnimalStatus.deceased)
         .toList();
     final total = CattleValuationEngine.herdValue(active, weights, book);
+    // Bulls aren't priced, so the head count has to match what the total
+    // actually covers — otherwise the header quietly implies the bulls are
+    // in there.
+    final priced = active
+        .where((a) =>
+            CattleValuationEngine.value(a, weights[a.id], book) != null)
+        .length;
+    final unpriced = active.length - priced;
     final totalStr = AnimalValuation(
       cattleClass: CattleClass.feederSteer,
       weight: null,
@@ -128,7 +136,11 @@ class _HerdViewState extends ConsumerState<HerdView> {
                         color: AppTheme.earthGreen,
                       ),
                     ),
-                    Text('${active.length} head · estimate',
+                    Text(
+                        unpriced > 0
+                            ? '$priced of ${active.length} head · '
+                                '$unpriced not priced'
+                            : '$priced head · estimate',
                         style:
                             TextStyle(fontSize: 11, color: Colors.grey[600])),
                   ],
@@ -567,6 +579,18 @@ class _AnimalRow extends StatelessWidget {
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: AppTheme.earthGreen,
+                    ),
+                  ),
+                ] else if (animal.sex == AnimalSex.bull) ...[
+                  // Bulls carry no computed value — say whose number it is
+                  // rather than leaving a blank where money should be.
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Value from rancher',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontStyle: FontStyle.italic,
+                      color: Colors.grey,
                     ),
                   ),
                 ],

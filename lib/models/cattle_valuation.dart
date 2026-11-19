@@ -18,6 +18,16 @@ enum CattleClass {
 
   bool get isPricedPerHead =>
       this == CattleClass.bredCow || this == CattleClass.bredHeifer;
+
+  /// Bulls are not valued, in any form — herd bull, bull calf, feeder bull.
+  /// What a bull is worth turns on EPDs, soundness, breed and who's bidding;
+  /// nothing the published forecast speaks to, and not something to guess at.
+  /// The rancher supplies it, and the app says so rather than inventing a
+  /// number.
+  bool get isNotPriced => this == CattleClass.bull;
+
+  /// Shown wherever a value would otherwise appear.
+  static const String notPricedNote = 'Value to be provided by rancher';
 }
 
 /// Parsed current-quarter bands from the HC Weekly Forecast.
@@ -59,7 +69,6 @@ class PriceBook {
   double heiferMid600;
   double fedPrice; // finished (live) $/cwt — not published by the forecast
   double cullCowPrice; // cull cow, boner $/cwt
-  double bullPrice; // cull bull $/cwt — not published
   double bredCowPrice; // running-age bred cow $/hd
   double bredHeiferPrice; // bred heifer $/hd
   double fedThresholdWeight;
@@ -75,7 +84,6 @@ class PriceBook {
     this.heiferMid600 = 458,
     this.fedPrice = 235,
     this.cullCowPrice = 176,
-    this.bullPrice = 165,
     this.bredCowPrice = 2750,
     this.bredHeiferPrice = 2850,
     this.fedThresholdWeight = 1150,
@@ -112,7 +120,6 @@ class PriceBook {
         'heiferMid600': heiferMid600,
         'fedPrice': fedPrice,
         'cullCowPrice': cullCowPrice,
-        'bullPrice': bullPrice,
         'bredCowPrice': bredCowPrice,
         'bredHeiferPrice': bredHeiferPrice,
         'fedThresholdWeight': fedThresholdWeight,
@@ -131,7 +138,6 @@ class PriceBook {
       heiferMid600: d('heiferMid600', 458),
       fedPrice: d('fedPrice', 235),
       cullCowPrice: d('cullCowPrice', 176),
-      bullPrice: d('bullPrice', 165),
       bredCowPrice: d('bredCowPrice', 2750),
       bredHeiferPrice: d('bredHeiferPrice', 2850),
       fedThresholdWeight: d('fedThresholdWeight', 1150),
@@ -207,6 +213,11 @@ class CattleValuationEngine {
     }
 
     final cattleClass = classify(animal, currentWeight, book);
+
+    // Not priced — see CattleClass.isNotPriced. Callers show
+    // CattleClass.notPricedNote in place of a figure, and the herd total
+    // leaves the animal out rather than carrying a guess.
+    if (cattleClass.isNotPriced) return null;
 
     if (cattleClass.isPricedPerHead) {
       final unit = cattleClass == CattleClass.bredHeifer
@@ -303,7 +314,7 @@ class CattleValuationEngine {
       case CattleClass.cullCow:
         return (book.cullCowPrice, false);
       case CattleClass.bull:
-        return (book.bullPrice, false);
+        return (0, false); // not priced — handled before this is reached
       case CattleClass.bredCow:
       case CattleClass.bredHeifer:
         return (0, false); // handled per-head upstream

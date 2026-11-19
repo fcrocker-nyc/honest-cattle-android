@@ -36,7 +36,6 @@ class _MarketPricesViewState extends ConsumerState<MarketPricesView> {
       'bredHeiferPrice': TextEditingController(text: _fmt(b.bredHeiferPrice)),
       'bredCowPrice': TextEditingController(text: _fmt(b.bredCowPrice)),
       'cullCowPrice': TextEditingController(text: _fmt(b.cullCowPrice)),
-      'bullPrice': TextEditingController(text: _fmt(b.bullPrice)),
       'fedPrice': TextEditingController(text: _fmt(b.fedPrice)),
       'fedThresholdWeight': TextEditingController(text: _fmt(b.fedThresholdWeight)),
       'assumedDailyGain': TextEditingController(text: _fmt(b.assumedDailyGain)),
@@ -46,8 +45,17 @@ class _MarketPricesViewState extends ConsumerState<MarketPricesView> {
     _sourceNote = b.sourceNote;
   }
 
-  String _fmt(double v) =>
-      v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toString();
+  /// Whole numbers print bare; anything else to at most two decimals with
+  /// trailing zeros trimmed. Keeps a parsed \$/cwt like 161.89 short enough to
+  /// read in the field, and stops a float like 161.89000000000001 from
+  /// spilling out of it.
+  String _fmt(double v) {
+    if (v == v.roundToDouble()) return v.toStringAsFixed(0);
+    return v
+        .toStringAsFixed(2)
+        .replaceFirst(RegExp(r'0+$'), '')
+        .replaceFirst(RegExp(r'\.$'), '');
+  }
 
   @override
   void dispose() {
@@ -68,7 +76,6 @@ class _MarketPricesViewState extends ConsumerState<MarketPricesView> {
     b.bredHeiferPrice = _val('bredHeiferPrice');
     b.bredCowPrice = _val('bredCowPrice');
     b.cullCowPrice = _val('cullCowPrice');
-    b.bullPrice = _val('bullPrice');
     b.fedPrice = _val('fedPrice');
     b.fedThresholdWeight = _val('fedThresholdWeight');
     b.assumedDailyGain = _val('assumedDailyGain');
@@ -165,9 +172,10 @@ class _MarketPricesViewState extends ConsumerState<MarketPricesView> {
           _section('Bred Females (\$/head)'),
           _priceField('bredHeiferPrice', 'Bred heifer', '\$/hd'),
           _priceField('bredCowPrice', 'Bred cow (running age)', '\$/hd'),
-          _section('Cull, Bull & Finished'),
+          _section('Cull & Finished'),
           _priceField('cullCowPrice', 'Cull cow (boner)', '\$/cwt'),
-          _priceField('bullPrice', 'Cull bull', '\$/cwt'),
+          // Herd bulls are deliberately not priced — see
+          // CattleClass.isNotPriced — so there's no field to set.
           _priceField('fedPrice', 'Finished / fed (live)', '\$/cwt'),
           _priceField('fedThresholdWeight', 'Fed at or above', 'lbs'),
           Padding(
@@ -206,8 +214,10 @@ class _MarketPricesViewState extends ConsumerState<MarketPricesView> {
       child: Row(
         children: [
           Expanded(child: Text(label)),
+          // Wide enough for a decimal rate plus its unit — a cull cow reads
+          // "161.89 \$/cwt", which clipped at the old width.
           SizedBox(
-            width: 110,
+            width: 145,
             child: TextField(
               controller: _c[key],
               textAlign: TextAlign.right,
